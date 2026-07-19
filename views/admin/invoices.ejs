@@ -1,0 +1,171 @@
+<%- include('../partials/admin-header') %>
+
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+  <h2 class="section-title mb-0">
+    <i class="fa-solid fa-file-invoice-dollar"></i> الفواتير
+  </h2>
+  <a href="/admin/invoices/add" class="btn btn-gold">
+    <i class="fa-solid fa-plus"></i> إضافة فاتورة
+  </a>
+</div>
+
+<% if (invoices.length === 0) { %>
+  <div class="text-center py-5" style="background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border-color);">
+    <i class="fa-solid fa-file-invoice fa-3x mb-3" style="color: var(--primary-gold);"></i>
+    <h5 style="color: var(--text-muted);">لا توجد فواتير بعد</h5>
+    <a href="/admin/invoices/add" class="btn btn-gold mt-2">
+      <i class="fa-solid fa-plus"></i> إضافة أول فاتورة
+    </a>
+  </div>
+<% } else { %>
+
+<!-- Desktop Table -->
+<div class="table-responsive-wrap d-none d-md-block">
+  <table class="table table-luxury align-middle mb-0">
+    <thead>
+      <tr>
+        <th>رقم الفاتورة</th>
+        <th>الاسم</th>
+        <th>النوع</th>
+        <th>تاريخ الفاتورة</th>
+        <th>الإجمالي <%= settings.currency || '₪' %></th>
+        <th>المدفوع <%= settings.currency || '₪' %></th>
+        <th>المتبقي <%= settings.currency || '₪' %></th>
+        <th>الحالة</th>
+        <th>إجراءات</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% invoices.forEach(inv => { %>
+        <tr>
+          <td><span class="badge-luxury"><%= inv.invoiceNumber %></span></td>
+          <td class="fw-bold"><%= inv.partyName %></td>
+          <td>
+            <span class="badge bg-<%= inv.type === 'customer' ? 'primary' : 'success' %> rounded-pill">
+              <i class="fa-solid fa-<%= inv.type === 'customer' ? 'user' : 'handshake' %>"></i>
+              <%= inv.type === 'customer' ? 'زبون' : 'تاجر' %>
+            </span>
+          </td>
+          <td style="font-size:13px; white-space:nowrap;">
+            <%= new Date(inv.invoiceDate).toLocaleDateString('ar-EG', {year:'numeric',month:'2-digit',day:'2-digit'}) %>
+          </td>
+          <td class="fw-bold text-danger"><%= inv.totalAmount.toLocaleString('ar-EG') %></td>
+          <td class="fw-bold text-success"><%= inv.paidAmount.toLocaleString('ar-EG') %></td>
+          <td class="fw-bold text-<%= inv.remainingBalance > 0 ? 'danger' : 'success' %>">
+            <%= inv.remainingBalance.toLocaleString('ar-EG') %>
+          </td>
+          <td>
+            <span class="badge bg-<%= inv.status === 'paid' ? 'success' : inv.status === 'partial' ? 'warning text-dark' : 'danger' %> rounded-pill">
+              <% if(inv.status === 'paid') { %><i class="fa-solid fa-check-circle"></i> مدفوعة
+              <% } else if(inv.status === 'partial') { %><i class="fa-solid fa-clock"></i> جزئي
+              <% } else { %><i class="fa-solid fa-times-circle"></i> غير مدفوعة<% } %>
+            </span>
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="/admin/invoices/view/<%= inv._id %>" class="btn btn-sm btn-outline-primary" title="عرض">
+                <i class="fa-solid fa-eye"></i>
+              </a>
+              <a href="/admin/invoices/edit/<%= inv._id %>" class="btn btn-sm btn-outline-warning" title="تعديل">
+                <i class="fa-solid fa-pen"></i>
+              </a>
+              <form action="/admin/invoices/delete/<%= inv._id %>" method="POST" style="display:inline;"
+                    onsubmit="return confirm('هل أنت متأكد من حذف الفاتورة <%= inv.invoiceNumber %>؟\nسيتم حذفها نهائياً ولا يمكن التراجع.')">
+                <button type="submit" class="btn btn-sm btn-danger" title="حذف">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<!-- Mobile Cards -->
+<div class="d-md-none">
+  <% invoices.forEach(inv => { %>
+    <div class="invoice-card">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <span class="badge-luxury"><%= inv.invoiceNumber %></span>
+        <span class="badge bg-<%= inv.status === 'paid' ? 'success' : inv.status === 'partial' ? 'warning text-dark' : 'danger' %> rounded-pill">
+          <% if(inv.status === 'paid') { %>مدفوعة<% } else if(inv.status === 'partial') { %>جزئي<% } else { %>غير مدفوعة<% } %>
+        </span>
+      </div>
+      <h6 class="fw-bold mb-1"><%= inv.partyName %></h6>
+      <div class="d-flex gap-3 mb-2" style="font-size:13px; color: var(--text-muted);">
+        <span><i class="fa-solid fa-calendar-alt me-1"></i><%= new Date(inv.invoiceDate).toLocaleDateString('ar-EG') %></span>
+        <span class="badge bg-<%= inv.type === 'customer' ? 'primary' : 'success' %> rounded-pill">
+          <%= inv.type === 'customer' ? 'زبون' : 'تاجر' %>
+        </span>
+      </div>
+      <div class="row g-2 text-center mb-2">
+        <div class="col-4">
+          <div style="background: rgba(220,38,38,0.08); border-radius:8px; padding:8px;">
+            <div style="font-size:11px; color:var(--text-muted);">الإجمالي</div>
+            <div class="fw-bold text-danger" style="font-size:14px;"><%= inv.totalAmount.toLocaleString('ar-EG') %> <%= settings.currency || '₪' %></div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div style="background: rgba(22,163,74,0.08); border-radius:8px; padding:8px;">
+            <div style="font-size:11px; color:var(--text-muted);">المدفوع</div>
+            <div class="fw-bold text-success" style="font-size:14px;"><%= inv.paidAmount.toLocaleString('ar-EG') %> <%= settings.currency || '₪' %></div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div style="background: rgba(212,175,55,0.08); border-radius:8px; padding:8px;">
+            <div style="font-size:11px; color:var(--text-muted);">المتبقي</div>
+            <div class="fw-bold" style="font-size:14px; color: <%= inv.remainingBalance > 0 ? '#dc2626' : '#16a34a' %>;"><%= inv.remainingBalance.toLocaleString('ar-EG') %> <%= settings.currency || '₪' %></div>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex gap-2 justify-content-end">
+        <a href="/admin/invoices/view/<%= inv._id %>" class="btn btn-sm btn-outline-primary">
+          <i class="fa-solid fa-eye me-1"></i> عرض
+        </a>
+        <a href="/admin/invoices/edit/<%= inv._id %>" class="btn btn-sm btn-outline-warning">
+          <i class="fa-solid fa-pen me-1"></i> تعديل
+        </a>
+        <form action="/admin/invoices/delete/<%= inv._id %>" method="POST"
+              onsubmit="return confirm('حذف الفاتورة <%= inv.invoiceNumber %>؟')">
+          <button type="submit" class="btn btn-sm btn-danger">
+            <i class="fa-solid fa-trash me-1"></i> حذف
+          </button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<!-- Summary Stats -->
+<div class="row g-3 mt-3">
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="fw-bold" style="font-size:13px; color:var(--text-muted);">إجمالي الفواتير</div>
+      <div class="fw-bold" style="font-size:22px; color:var(--primary-gold);"><%= invoices.length %></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="fw-bold" style="font-size:13px; color:var(--text-muted);">إجمالي المبالغ</div>
+      <div class="fw-bold text-danger" style="font-size:18px;"><%= invoices.reduce((s,i)=>s+i.totalAmount,0).toLocaleString('ar-EG') %> <%= settings.currency || '₪' %></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="fw-bold" style="font-size:13px; color:var(--text-muted);">إجمالي المدفوع</div>
+      <div class="fw-bold text-success" style="font-size:18px;"><%= invoices.reduce((s,i)=>s+i.paidAmount,0).toLocaleString('ar-EG') %> <%= settings.currency || '₪' %></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="fw-bold" style="font-size:13px; color:var(--text-muted);">إجمالي المتبقي</div>
+      <div class="fw-bold" style="font-size:18px; color:#d4af37;"><%= invoices.reduce((s,i)=>s+i.remainingBalance,0).toLocaleString('ar-EG') %> <%= settings.currency || '₪' %></div>
+    </div>
+  </div>
+</div>
+
+<% } %>
+
+<%- include('../partials/admin-footer') %>

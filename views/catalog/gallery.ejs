@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ar-u-nu-latn" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= catalog.name %> | <%= settings.storeName %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gold: #d4af37; --dark: #0f172a;
+      --bg: #f0f4f8; --card: #fff;
+      --text: #1e293b; --muted: #64748b;
+      --border: #e2e8f0;
+    }
+    [data-theme="dark"] {
+      --bg: #0d1117; --card: #161b22;
+      --text: #e6edf3; --muted: #8b949e; --border: #30363d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Cairo', sans-serif; background: var(--bg); color: var(--text); transition: background 0.3s, color 0.3s; }
+
+    .topbar {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      padding: 12px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 3px 20px rgba(0,0,0,0.3);
+      flex-wrap: wrap; gap: 10px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .brand { color: var(--gold); font-weight: 800; font-size: 17px; display: flex; align-items: center; gap: 8px; text-decoration: none; }
+    .topbar-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-icon {
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      color: #cbd5e1; padding: 7px 12px; border-radius: 8px; cursor: pointer;
+      font-family: 'Cairo', sans-serif; font-size: 13px; text-decoration: none;
+      display: flex; align-items: center; gap: 5px; transition: 0.2s;
+    }
+    .btn-icon:hover { background: rgba(212,175,55,0.15); color: var(--gold); }
+
+    .cat-hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      padding: 36px 20px 28px;
+      text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .cat-hero::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+    .cat-hero h1 { color: var(--gold); font-size: clamp(20px, 4vw, 34px); font-weight: 800; margin: 0 0 6px; }
+    .cat-hero p { color: #94a3b8; font-size: 14px; margin: 0; }
+    .cat-hero .img-count {
+      display: inline-block; margin-top: 12px;
+      background: rgba(212,175,55,0.12); border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 20px; padding: 5px 18px; color: var(--gold); font-size: 13px;
+    }
+
+    .page-wrap { max-width: 1200px; margin: 0 auto; padding: 32px 16px 60px; }
+
+    /* Masonry / photo-wall grid */
+    .gallery-grid {
+      columns: 4;
+      column-gap: 14px;
+    }
+    @media (max-width: 992px) { .gallery-grid { columns: 3; } }
+    @media (max-width: 640px)  { .gallery-grid { columns: 2; } }
+    @media (max-width: 380px)  { .gallery-grid { columns: 1; } }
+
+    .gallery-item {
+      break-inside: avoid;
+      margin-bottom: 14px;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: zoom-in;
+      position: relative;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      transition: box-shadow 0.25s;
+    }
+    .gallery-item:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+    .gallery-item img {
+      width: 100%; display: block;
+      transition: transform 0.35s;
+    }
+    .gallery-item:hover img { transform: scale(1.04); }
+    .gallery-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0); transition: background 0.25s;
+      display: flex; flex-direction: column; justify-content: flex-end;
+    }
+    .gallery-item:hover .gallery-overlay { background: rgba(0,0,0,0.35); }
+    .gallery-caption {
+      color: white; font-size: 13px; font-weight: 600;
+      padding: 10px 12px;
+      background: linear-gradient(0deg, rgba(0,0,0,0.7), transparent);
+      transform: translateY(100%); transition: transform 0.25s;
+    }
+    .gallery-item:hover .gallery-caption { transform: translateY(0); }
+    .zoom-icon {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(212,175,55,0.85); color: #0f172a;
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; opacity: 0; transition: opacity 0.2s;
+    }
+    .gallery-item:hover .zoom-icon { opacity: 1; }
+
+    /* Lightbox */
+    .lbox {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.95);
+      backdrop-filter: blur(8px);
+      align-items: center; justify-content: center;
+      flex-direction: column;
+    }
+    .lbox.active { display: flex; }
+
+    .lbox-topbar {
+      position: fixed; top: 0; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.8), transparent);
+    }
+    .lbox-title { color: white; font-size: 14px; font-weight: 700; }
+    .lbox-counter { color: #94a3b8; font-size: 13px; }
+    .lbox-close {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+      color: white; border-radius: 50%; width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; cursor: pointer; transition: background 0.2s;
+    }
+    .lbox-close:hover { background: rgba(220,38,38,0.7); }
+
+    .lbox-img-wrap {
+      max-width: 90vw; max-height: 80vh;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .lbox-img {
+      max-width: 100%; max-height: 80vh;
+      border-radius: 8px; object-fit: contain;
+      box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+      transition: opacity 0.2s;
+    }
+    .lbox-img.fade { opacity: 0; }
+
+    .lbox-caption {
+      color: #94a3b8; font-size: 14px; margin-top: 14px;
+      text-align: center; max-width: 500px;
+    }
+
+    .lbox-nav {
+      position: fixed; top: 50%; transform: translateY(-50%);
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      color: white; width: 50px; height: 50px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; cursor: pointer; transition: background 0.2s;
+      user-select: none;
+    }
+    .lbox-nav:hover { background: rgba(212,175,55,0.25); color: var(--gold); }
+    .lbox-prev { right: 20px; }
+    .lbox-next { left: 20px; }
+
+    .lbox-thumbnails {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(0deg, rgba(0,0,0,0.85), transparent);
+      padding: 16px 20px 20px;
+      display: flex; gap: 8px; justify-content: center; overflow-x: auto;
+    }
+    .lbox-thumb {
+      width: 60px; height: 50px; border-radius: 8px; object-fit: cover;
+      cursor: pointer; opacity: 0.5;
+      border: 2px solid transparent; transition: opacity 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+    }
+    .lbox-thumb.active { opacity: 1; border-color: var(--gold); }
+    .lbox-thumb:hover { opacity: 0.85; }
+
+    .empty-state { text-align: center; padding: 80px 20px; }
+    .empty-state i { color: rgba(212,175,55,0.3); margin-bottom: 16px; }
+
+    footer {
+      text-align: center; padding: 20px;
+      color: var(--muted); font-size: 13px;
+      border-top: 1px solid var(--border); margin-top: 20px;
+    }
+    footer a { color: var(--gold); text-decoration: none; }
+  </style>
+  <script>
+    (function() {
+      const t = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+    function toggleTheme() {
+      const c = document.documentElement.getAttribute('data-theme') || 'light';
+      const n = c === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', n);
+      localStorage.setItem('theme', n);
+      const ic = document.getElementById('themeIc');
+      if (ic) ic.className = n === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    }
+  </script>
+</head>
+<body>
+
+  <nav class="topbar">
+    <a href="<%= settings.storeName ? '/catalog' : '/' %>" class="brand">
+      <i class="fa-solid fa-couch"></i>
+      <%= settings.storeName %>
+    </a>
+    <div class="topbar-actions">
+      <button class="btn-icon" onclick="toggleTheme()">
+        <i class="fa-solid fa-moon" id="themeIc"></i>
+      </button>
+      <a href="/catalog" class="btn-icon">
+        <i class="fa-solid fa-arrow-right"></i> الكتالوجات
+      </a>
+    </div>
+  </nav>
+
+  <div class="cat-hero">
+    <h1><%= catalog.name %></h1>
+    <% if (catalog.description) { %>
+      <p><%= catalog.description %></p>
+    <% } %>
+    <div class="img-count">
+      <i class="fa-solid fa-images me-1"></i> <%= catalog.images.length %> صورة
+    </div>
+  </div>
+
+  <div class="page-wrap">
+
+    <% if (catalog.images.length === 0) { %>
+      <div class="empty-state">
+        <i class="fa-solid fa-photo-film fa-4x d-block mb-3"></i>
+        <h5>لا توجد صور في هذا الكتالوج بعد</h5>
+        <a href="/catalog" class="btn-icon d-inline-flex mt-3" style="text-decoration:none;">
+          <i class="fa-solid fa-arrow-right"></i> عودة للكتالوجات
+        </a>
+      </div>
+    <% } else { %>
+      <div class="gallery-grid">
+        <% catalog.images.forEach((img, idx) => { %>
+          <div class="gallery-item" onclick="openLightbox(<%= idx %>)">
+            <img src="<%= img.url %>" alt="<%= img.caption || catalog.name %>" loading="lazy">
+            <div class="gallery-overlay">
+              <div class="zoom-icon"><i class="fa-solid fa-expand"></i></div>
+              <% if (img.caption) { %>
+                <div class="gallery-caption"><%= img.caption %></div>
+              <% } %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+
+  </div>
+
+  <footer>
+    <p>
+      <i class="fa-solid fa-couch me-1" style="color: var(--gold);"></i>
+      <%= settings.storeName %>
+      <% if (settings.storePhone) { %> &nbsp;|&nbsp; <i class="fa-solid fa-phone"></i> <%= settings.storePhone %><% } %>
+    </p>
+    <% if (settings.storeWhatsapp) { %>
+      <a href="https://wa.me/<%= settings.storeWhatsapp.replace(/\D/g,'') %>?text=<%= encodeURIComponent('السلام عليكم، أود الاستفسار عن كتالوج: ' + catalog.name) %>" target="_blank">
+        <i class="fab fa-whatsapp"></i> استفسار عبر واتساب
+      </a>
+    <% } %>
+  </footer>
+
+  <!-- Lightbox -->
+  <div class="lbox" id="lightbox">
+    <div class="lbox-topbar">
+      <div>
+        <div class="lbox-title" id="lboxTitle"></div>
+        <div class="lbox-counter" id="lboxCounter"></div>
+      </div>
+      <div class="lbox-close" onclick="closeLightbox()"><i class="fa-solid fa-xmark"></i></div>
+    </div>
+
+    <div class="lbox-img-wrap">
+      <img src="" id="lboxImg" class="lbox-img" alt="">
+    </div>
+    <div class="lbox-caption" id="lboxCaption"></div>
+
+    <div class="lbox-nav lbox-prev" onclick="navigate(-1)"><i class="fa-solid fa-chevron-right"></i></div>
+    <div class="lbox-nav lbox-next" onclick="navigate(1)"><i class="fa-solid fa-chevron-left"></i></div>
+
+    <div class="lbox-thumbnails" id="lboxThumbs"></div>
+  </div>
+
+  <script>
+    const images = <%- JSON.stringify(catalog.images.map(i => ({ url: i.url, caption: i.caption || '' }))) %>;
+    let current = 0;
+    let lboxOpen = false;
+
+    function openLightbox(idx) {
+      current = idx;
+      lboxOpen = true;
+      document.body.style.overflow = 'hidden';
+      document.getElementById('lightbox').classList.add('active');
+      buildThumbs();
+      updateLightbox();
+    }
+
+    function closeLightbox() {
+      lboxOpen = false;
+      document.body.style.overflow = '';
+      document.getElementById('lightbox').classList.remove('active');
+    }
+
+    function navigate(dir) {
+      current = (current + dir + images.length) % images.length;
+      const img = document.getElementById('lboxImg');
+      img.classList.add('fade');
+      setTimeout(() => { updateLightbox(); img.classList.remove('fade'); }, 150);
+    }
+
+    function updateLightbox() {
+      const img = images[current];
+      document.getElementById('lboxImg').src = img.url;
+      document.getElementById('lboxCaption').textContent = img.caption || '';
+      document.getElementById('lboxTitle').textContent = '<%= catalog.name %>';
+      document.getElementById('lboxCounter').textContent = (current + 1) + ' / ' + images.length;
+      document.querySelectorAll('.lbox-thumb').forEach((t, i) => {
+        t.classList.toggle('active', i === current);
+      });
+      const thumbs = document.getElementById('lboxThumbs');
+      const activeThumb = thumbs.children[current];
+      if (activeThumb) activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+
+    function buildThumbs() {
+      const thumbs = document.getElementById('lboxThumbs');
+      if (thumbs.children.length > 0) return;
+      images.forEach((img, i) => {
+        const t = document.createElement('img');
+        t.src = img.url;
+        t.className = 'lbox-thumb';
+        t.onclick = (e) => { e.stopPropagation(); current = i; updateLightbox(); };
+        thumbs.appendChild(t);
+      });
+    }
+
+    document.addEventListener('keydown', e => {
+      if (!lboxOpen) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') navigate(-1);
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') navigate(1);
+    });
+
+    // Swipe support
+    let touchStartX = 0;
+    document.getElementById('lightbox').addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    document.getElementById('lightbox').addEventListener('touchend', e => {
+      const diff = touchStartX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 50) navigate(diff > 0 ? 1 : -1);
+    }, { passive: true });
+
+    document.getElementById('lightbox').addEventListener('click', function(e) {
+      if (e.target === this) closeLightbox();
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* 25002500 062a062d0648064a0644 0627064406230631064206270645 06270644063906310628064a0629 064406440627062a064a0646064a0629 25002500 */
+(function(){
+  function fix(n){if(n.nodeType===3){n.nodeValue=n.nodeValue.replace(/[0660-0669]/g,function(d){return d.charCodeAt(0)-0x0660;});}else{n.childNodes.forEach(fix);}}
+  document.addEventListener('DOMContentLoaded',function(){fix(document.body);});
+})();
+</script>
+</body>
+</html>

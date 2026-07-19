@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ar-u-nu-latn" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مبيعة <%= sale.saleNumber %></title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Cairo',sans-serif; font-size:11px; color:#0f172a; background:#fff; direction:rtl; }
+  .page { width:210mm; margin:0 auto; padding:10mm 12mm; }
+  .inv-head { display:flex; justify-content:space-between; align-items:stretch; border-bottom:2px solid #0f172a; padding-bottom:8px; margin-bottom:8px; gap:8px; min-height:70px; }
+  .header-right { flex:1; display:flex; align-items:center; gap:8px; }
+  .store-name { font-size:16px; font-weight:900; }
+  .store-details { font-size:9px; color:#334155; line-height:1.5; margin-top:2px; }
+  .header-center { flex:1; text-align:center; }
+  .sale-title { font-size:18px; font-weight:900; color:#0f172a; }
+  .header-left { text-align:left; font-size:11px; line-height:1.7; }
+  .party-strip { background:#0f172a; color:#fff; padding:6px 12px; border-radius:6px; margin-bottom:8px; display:flex; gap:20px; flex-wrap:wrap; font-size:11px; }
+  .party-strip strong { color:#d4af37; }
+  table { width:100%; border-collapse:collapse; font-size:11px; margin-bottom:8px; }
+  thead th { background:#0f172a; color:#d4af37; padding:5px 8px; text-align:right; }
+  tbody td { padding:5px 8px; border-bottom:1px solid #e2e8f0; }
+  tbody tr:nth-child(even) td { background:#f8fafc; }
+  .totals-box { background:#0f172a; color:#fff; border-radius:8px; padding:10px 16px; display:flex; gap:20px; flex-wrap:wrap; margin-bottom:8px; }
+  .t-item { display:flex; flex-direction:column; align-items:center; }
+  .t-lbl { font-size:10px; color:#94a3b8; }
+  .t-val { font-size:16px; font-weight:900; color:#d4af37; }
+  .sig-row { display:flex; gap:12px; margin-top:14px; }
+  .sig-box { flex:1; border:1px dashed #cbd5e1; border-radius:6px; text-align:center; padding:18px 6px 6px; font-size:10px; color:#94a3b8; min-height:55px; }
+  .footer-strip { border-top:1px dashed #e2e8f0; padding-top:6px; margin-top:8px; text-align:center; font-size:10px; color:#64748b; }
+  .no-print { text-align:center; padding:12px; display:flex; gap:10px; justify-content:center; }
+  .btn-p { display:inline-flex; align-items:center; gap:6px; padding:8px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none; border:none; font-family:'Cairo',sans-serif; }
+  .btn-print { background:#1e293b; color:#fff; }
+  .btn-back  { background:#f1f5f9; color:#475569; }
+  @media print {
+    @page { size: <%= settings.salePrintSize || 'A4' %>; margin: <%= (settings.printMarginTop || 8) %>mm <%= (settings.printMarginSide || 10) %>mm; }
+    body { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .no-print { display:none !important; }
+    .page { padding:0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button class="btn-p btn-print" onclick="window.print()">🖨️ طباعة</button>
+  <a href="/admin/sales/view/<%= sale._id %>" class="btn-p btn-back">← رجوع</a>
+</div>
+
+<div class="page">
+
+  <div class="inv-head">
+    <div class="header-right">
+      <% if(settings.storeLogo && settings.storeLogo !== '/images/default-logo.png') { %>
+        <img src="<%= settings.storeLogo %>" style="max-height:50px;object-fit:contain;border-radius:5px;" alt="شعار">
+      <% } %>
+      <div>
+        <div class="store-name"><%= settings.storeName %></div>
+        <div class="store-details">
+          <% if(settings.storeAddress){ %><%= settings.storeAddress %><br><% } %>
+          <% if(settings.storePhone){ %>ت: <%= settings.storePhone %>&nbsp;&nbsp;<% } %>
+          <% if(settings.storeEmail){ %><%= settings.storeEmail %><% } %>
+        </div>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="sale-title">مبيعة معرض</div>
+      <div style="font-size:11px;color:#64748b;font-weight:600;">Showroom Sale</div>
+    </div>
+    <div class="header-left">
+      <div><strong>رقم المبيعة:</strong> <%= sale.saleNumber %></div>
+      <div><strong>التاريخ:</strong> <%= new Date(sale.saleDate).toLocaleDateString('ar-EG') %></div>
+      <div><strong>الوقت:</strong> <%= new Date(sale.saleDate).toLocaleTimeString('ar-EG', {hour:'2-digit',minute:'2-digit'}) %></div>
+    </div>
+  </div>
+
+  <div class="party-strip">
+    <div><strong>الزبون: </strong><%= sale.customerName %></div>
+    <% if(sale.customerPhone) { %><div><strong>الهاتف: </strong><%= sale.customerPhone %></div><% } %>
+    <% if(sale.notes) { %><div><strong>ملاحظات: </strong><%= sale.notes %></div><% } %>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>الصنف / البيان</th>
+        <th>النوع</th>
+        <th>الكمية / المقاس</th>
+        <th>السعر</th>
+        <th>خصم</th>
+        <th>الإجمالي</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% sale.items.forEach((item, i) => { %>
+        <tr>
+          <td><%= i+1 %></td>
+          <td style="font-weight:700;"><%= item.description %></td>
+          <td>
+            <%= item.quantityType==='piece'?'كمية':item.quantityType==='meter'?'متر طولي':'متر مربع' %>
+          </td>
+          <td>
+            <% if(item.quantityType==='sqmeter') { %>
+              <%= item.length %>×<%= item.width %>=<%= item.quantity.toFixed(2) %>م²
+            <% } else if(item.quantityType==='meter') { %>
+              <%= item.quantity.toFixed(2) %> م
+            <% } else { %>
+              <%= item.quantity %>
+            <% } %>
+          </td>
+          <td><%= item.unitPrice.toLocaleString('ar-EG') %> ₪</td>
+          <td><%= (item.discount||0).toLocaleString('ar-EG') %> ₪</td>
+          <td style="font-weight:800;"><%= item.total.toLocaleString('ar-EG') %> ₪</td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="totals-box">
+    <div class="t-item"><span class="t-lbl">المجموع الفرعي</span><span class="t-val"><%= sale.subtotal.toLocaleString('ar-EG') %> ₪</span></div>
+    <div style="color:#475569;font-size:16px;align-self:center;">−</div>
+    <div class="t-item"><span class="t-lbl">الخصم</span><span class="t-val" style="color:#4ade80;"><%= sale.discount.toLocaleString('ar-EG') %> ₪</span></div>
+    <div style="color:#475569;font-size:16px;align-self:center;">=</div>
+    <div class="t-item"><span class="t-lbl">الإجمالي</span><span class="t-val" style="font-size:20px;"><%= sale.totalAmount.toLocaleString('ar-EG') %> ₪</span></div>
+    <div style="flex:1;"></div>
+    <div class="t-item"><span class="t-lbl">المحصّل</span><span class="t-val" style="color:#4ade80;font-size:16px;"><%= sale.paidAmount.toLocaleString('ar-EG') %> ₪</span></div>
+    <div class="t-item"><span class="t-lbl">المتبقي</span><span class="t-val" style="color:#f87171;font-size:16px;"><%= sale.remainingBalance.toLocaleString('ar-EG') %> ₪</span></div>
+  </div>
+
+  <% if(sale.payments && sale.payments.length > 0) { %>
+    <div style="font-size:11px;font-weight:800;margin-bottom:4px;">سجل الدفعات:</div>
+    <table>
+      <thead><tr><th>#</th><th>المبلغ</th><th>الطريقة</th><th>التاريخ</th><th>ملاحظات</th></tr></thead>
+      <tbody>
+        <% sale.payments.forEach((p,i) => { %>
+          <tr>
+            <td><%= i+1 %></td>
+            <td style="font-weight:700;"><%= p.amount.toLocaleString('ar-EG') %> ₪</td>
+            <td><%= p.method==='cash'?'نقداً':p.method==='bank_transfer'?'تحويل بنكي':p.method==='check'?'شيك':'بطاقة' %></td>
+            <td><%= new Date(p.date).toLocaleDateString('ar-EG') %></td>
+            <td><%= p.notes||'—' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+
+  <div class="sig-row">
+    <div class="sig-box">توقيع الزبون</div>
+    <div class="sig-box">توقيع الموظف</div>
+    <div class="sig-box">الختم</div>
+  </div>
+
+  <% if(settings.voucherFooterText) { %>
+    <div class="footer-strip"><%= settings.voucherFooterText %></div>
+  <% } else { %>
+    <div class="footer-strip">شكراً لتعاملكم معنا • <%= settings.storeName %></div>
+  <% } %>
+
+</div>
+<script>
+/* 25002500 062a062d0648064a0644 0627064406230631064206270645 06270644063906310628064a0629 064406440627062a064a0646064a0629 25002500 */
+(function(){
+  function fix(n){if(n.nodeType===3){n.nodeValue=n.nodeValue.replace(/[0660-0669]/g,function(d){return d.charCodeAt(0)-0x0660;});}else{n.childNodes.forEach(fix);}}
+  document.addEventListener('DOMContentLoaded',function(){fix(document.body);});
+})();
+</script>
+</body>
+</html>

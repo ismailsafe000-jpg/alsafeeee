@@ -1,0 +1,113 @@
+
+    </main><!-- end content-area -->
+
+    <!-- Footer -->
+    <footer style="padding:12px 24px; border-top:1px solid var(--border); font-size:12px; color:var(--text-2); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; background:var(--card);">
+      <span>
+        <i class="fa-solid fa-couch me-1" style="color:var(--primary);"></i>
+        <%= settings.storeName %> &nbsp;·&nbsp; نظام إدارة متكامل
+      </span>
+      <span style="opacity:0.6;">جميع الحقوق محفوظة &copy; 2024 &nbsp;·&nbsp; v2.0.0</span>
+    </footer>
+
+  </div><!-- end main-area -->
+</div><!-- end app-layout -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ── Theme toggle ── */
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('adminTheme', t);
+  const icons = [document.getElementById('themeIcon'), document.getElementById('themeIcon2')];
+  icons.forEach(ic => {
+    if (ic) ic.className = t === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  });
+  const labels = document.querySelectorAll('.theme-label');
+  labels.forEach(l => l && (l.textContent = t === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'));
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(cur === 'dark' ? 'light' : 'dark');
+}
+
+/* ── Sidebar toggle (mobile) ── */
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  const open = sb.classList.contains('open');
+  sb.classList.toggle('open', !open);
+  if(ov) ov.classList.toggle('visible', !open);
+}
+function closeSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  if(sb) sb.classList.remove('open');
+  if(ov) ov.classList.remove('visible');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+
+/* ── Notification dropdown ── */
+function toggleNotif() {
+  const drop = document.getElementById('notifDrop');
+  if(drop) drop.classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+  const btn  = document.getElementById('notifBtn');
+  const drop = document.getElementById('notifDrop');
+  if(drop && drop.classList.contains('open') && !drop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+    drop.classList.remove('open');
+  }
+});
+
+/* ── Ctrl+K focuses search ── */
+document.addEventListener('keydown', e => {
+  if((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    const s = document.getElementById('globalSearch');
+    if(s) { s.focus(); s.select(); }
+  }
+});
+
+/* ── Init on load ── */
+document.addEventListener('DOMContentLoaded', () => {
+  applyTheme(localStorage.getItem('adminTheme') || 'light');
+
+  /* Auto-dismiss flash alerts */
+  setTimeout(() => {
+    document.querySelectorAll('.alert').forEach(a => {
+      try { bootstrap.Alert.getOrCreateInstance(a).close(); } catch(e) {}
+    });
+  }, 5000);
+
+  /* Global search: highlight table rows */
+  const searchInput = document.getElementById('globalSearch');
+  if (searchInput) {
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const q = searchInput.value.trim();
+        if (q.length < 2) return;
+        document.querySelectorAll('table td').forEach(td => {
+          if (td.textContent.includes(q)) {
+            td.closest('tr').style.background = 'rgba(79,70,229,0.08)';
+          }
+        });
+      }
+      if (e.key === 'Escape') {
+        document.querySelectorAll('table tr').forEach(tr => tr.style.background = '');
+        searchInput.value = '';
+        searchInput.blur();
+      }
+    });
+  }
+});
+</script>
+<script>
+/* ── تحويل الأرقام العربية للاتينية ── */
+(function(){
+  function fix(n){ if(n.nodeType===3){ n.nodeValue=n.nodeValue.replace(/[٠-٩]/g,d=>d.charCodeAt(0)-0x0660); } else { n.childNodes.forEach(fix); } }
+  document.addEventListener('DOMContentLoaded',()=>fix(document.body));
+})();
+</script>
+</body>
+</html>

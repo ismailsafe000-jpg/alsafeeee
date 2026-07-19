@@ -1,0 +1,66 @@
+<%- include('../partials/admin-header') %>
+
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="/admin/catalogs" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-right"></i>
+  </a>
+  <h2 class="section-title mb-0">
+    <i class="fa-solid fa-<%= catalog ? 'pen' : 'plus' %>"></i>
+    <%= catalog ? 'تعديل الكتالوج' : 'إنشاء كتالوج جديد' %>
+  </h2>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="luxury-card p-4">
+      <form action="/admin/catalogs/<%= catalog ? 'edit/' + catalog._id : 'add' %>" method="POST" enctype="multipart/form-data">
+
+        <div class="mb-4">
+          <label class="form-label fw-bold">اسم الكتالوج <span class="text-danger">*</span></label>
+          <input type="text" name="name" class="form-control"
+                 value="<%= catalog ? catalog.name : '' %>"
+                 placeholder="مثال: غرف النوم — مجموعة 2025"
+                 required>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-bold">وصف الكتالوج</label>
+          <textarea name="description" class="form-control" rows="3"
+                    placeholder="وصف مختصر للكتالوج (اختياري)"><%= catalog ? catalog.description : '' %></textarea>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-bold">صورة الغلاف</label>
+          <% if (catalog && catalog.cover) { %>
+            <div class="mb-2">
+              <img src="<%= catalog.cover %>" style="height:120px; border-radius:10px; object-fit:cover; border:2px solid var(--border-color);">
+              <p class="text-muted small mt-1">ارفع صورة جديدة لتغيير الغلاف</p>
+            </div>
+          <% } %>
+          <input type="file" name="cover" class="form-control" accept="image/*">
+          <div class="form-text">الحجم الأقصى 5MB — JPG / PNG / WebP</div>
+        </div>
+
+        <div class="mb-4">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="isActive" id="isActive"
+                   <%= (!catalog || catalog.isActive) ? 'checked' : '' %>>
+            <label class="form-check-label fw-bold" for="isActive">
+              مرئي للزوار (مفعّل)
+            </label>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-gold">
+            <i class="fa-solid fa-save"></i>
+            <%= catalog ? 'حفظ التعديلات' : 'إنشاء الكتالوج' %>
+          </button>
+          <a href="/admin/catalogs" class="btn btn-outline-secondary">إلغاء</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/admin-footer') %>

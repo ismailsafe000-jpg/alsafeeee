@@ -1,0 +1,485 @@
+<%- include('../partials/admin-header') %>
+<style>
+  .vs-wrap { max-width: 900px; margin: 0 auto; }
+
+  .vs-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 22px 26px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-soft);
+  }
+  .vs-section h5 {
+    font-size: 14px; font-weight: 800; color: var(--text-main);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 10px; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .form-label { font-weight: 700; font-size: 13px; color: var(--text-main); margin-bottom: 5px; }
+  .form-hint  { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+  /* switch rows */
+  .switch-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--border-color); gap: 12px;
+  }
+  .switch-row:last-of-type { border-bottom: none; }
+  .switch-info .sw-title { font-size: 13.5px; font-weight: 700; color: var(--text-main); }
+  .switch-info .sw-desc  { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  .form-check-input { width: 40px; height: 22px; cursor: pointer; }
+  .form-check-input:checked { background-color: #d4af37; border-color: #d4af37; }
+
+  /* color preview swatch */
+  .color-row { display: flex; align-items: center; gap: 10px; }
+  .color-swatch {
+    width: 32px; height: 32px; border-radius: 8px;
+    border: 2px solid var(--border-color);
+    cursor: pointer; flex-shrink: 0;
+  }
+
+  /* paper size cards */
+  .size-cards { display: flex; gap: 10px; flex-wrap: wrap; }
+  .size-card {
+    border: 2px solid var(--border-color);
+    border-radius: 10px; padding: 10px 18px;
+    cursor: pointer; font-size: 13px; font-weight: 700;
+    color: var(--text-muted); background: none;
+    transition: 0.15s; font-family: inherit;
+  }
+  .size-card:hover { border-color: #d4af37; color: var(--text-main); }
+  .size-card.active { border-color: #d4af37; background: rgba(212,175,55,0.10); color: #d4af37; }
+
+  /* preview panel */
+  .voucher-preview {
+    background: #fff; border: 1px solid #dee2e6; border-radius: 10px;
+    padding: 20px; font-family: 'Cairo', sans-serif; color: #1e293b;
+    font-size: 12px; direction: rtl;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .vp-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding-bottom: 12px; margin-bottom: 12px;
+    border-bottom: 2px solid;
+  }
+  .vp-title { font-size: 16px; font-weight: 900; }
+  .vp-logo  { width: 50px; height: 50px; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: contain; background: #f8fafc; display:flex; align-items:center; justify-content:center; font-size:22px; }
+  .vp-body  { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin-bottom: 12px; }
+  .vp-row   { display: flex; gap: 6px; font-size: 11px; }
+  .vp-lbl   { font-weight: 700; white-space: nowrap; }
+  .vp-amount { font-size: 18px; font-weight: 900; text-align: center; padding: 10px; border-radius: 8px; margin: 10px 0; }
+  .vp-footer { border-top: 1px solid; padding-top: 10px; margin-top: 10px; font-size: 11px; text-align: center; }
+  .vp-sigs   { display: flex; justify-content: space-between; margin-top: 14px; font-size: 11px; }
+  .vp-sig    { text-align: center; }
+  .vp-sig-line { border-top: 1px solid #94a3b8; width: 90px; margin: 6px auto 4px; }
+</style>
+
+<div class="vs-wrap">
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <h2 class="section-title mb-0">
+      <i class="fa-solid fa-receipt" style="color:#d4af37;"></i> إعدادات سندات القبض والصرف
+    </h2>
+  </div>
+
+  <% if (success_msg && success_msg.length && success_msg[0]) { %>
+    <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+      <i class="fa-solid fa-circle-check"></i> <%= success_msg[0] %>
+    </div>
+  <% } %>
+  <% if (error_msg && error_msg.length && error_msg[0]) { %>
+    <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+      <i class="fa-solid fa-circle-xmark"></i> <%= error_msg[0] %>
+    </div>
+  <% } %>
+
+  <form method="POST" action="/admin/voucher-settings" id="voucherForm">
+
+    <!-- ═══ بيانات المعرض الإضافية ═══ -->
+    <div class="vs-section">
+      <h5><i class="fa-solid fa-store" style="color:#6366f1;"></i> بيانات المعرض (تظهر على السند)</h5>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">المدينة</label>
+          <input type="text" class="form-control" name="storeCity"
+                 value="<%= settings.storeCity || '' %>" placeholder="مثال: نابلس">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">الدولة</label>
+          <input type="text" class="form-control" name="storeCountry"
+                 value="<%= settings.storeCountry || '' %>" placeholder="مثال: فلسطين">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">رقم الجوال</label>
+          <input type="text" class="form-control" name="storeMobile"
+                 value="<%= settings.storeMobile || '' %>" placeholder="0501234567">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">الموقع الإلكتروني</label>
+          <input type="text" class="form-control" name="storeWebsite"
+                 value="<%= settings.storeWebsite || '' %>" placeholder="www.example.com">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">الرقم الضريبي</label>
+          <input type="text" class="form-control" name="storeTaxNumber"
+                 value="<%= settings.storeTaxNumber || '' %>">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">السجل التجاري</label>
+          <input type="text" class="form-control" name="storeCommercialReg"
+                 value="<%= settings.storeCommercialReg || '' %>">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">رقم الرخصة</label>
+          <input type="text" class="form-control" name="storeLicenseNumber"
+                 value="<%= settings.storeLicenseNumber || '' %>">
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ الترقيم ═══ -->
+    <div class="vs-section">
+      <h5><i class="fa-solid fa-hashtag" style="color:#0ea5e9;"></i> ترقيم السندات</h5>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">بادئة سند القبض <small>(Receipt)</small></label>
+          <input type="text" class="form-control" name="rcPrefix"
+                 value="<%= settings.rcPrefix || 'RC' %>" maxlength="5">
+          <div class="form-hint">مثال: RC-00001</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">بادئة سند الصرف <small>(Payment)</small></label>
+          <input type="text" class="form-control" name="pvPrefix"
+                 value="<%= settings.pvPrefix || 'PV' %>" maxlength="5">
+          <div class="form-hint">مثال: PV-00001</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">عدد أرقام السند</label>
+          <input type="number" class="form-control" name="voucherDigits"
+                 value="<%= settings.voucherDigits || 6 %>" min="3" max="10">
+          <div class="form-hint">عدد الأصفار: 6 → 000001</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">يبدأ ترقيم القبض من</label>
+          <input type="number" class="form-control" name="rcStartNumber"
+                 value="<%= settings.rcStartNumber || 1 %>" min="1">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">يبدأ ترقيم الصرف من</label>
+          <input type="number" class="form-control" name="pvStartNumber"
+                 value="<%= settings.pvStartNumber || 1 %>" min="1">
+        </div>
+        <div class="col-md-4 d-flex align-items-end pb-1">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="resetVoucherYearly" id="resetYearly"
+                   <%= settings.resetVoucherYearly ? 'checked' : '' %>>
+            <label class="form-check-label" for="resetYearly" style="font-size:13px; font-weight:700; color:var(--text-main);">
+              إعادة الترقيم سنوياً
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ حجم الطباعة ═══ -->
+    <div class="vs-section">
+      <h5><i class="fa-solid fa-print" style="color:#8b5cf6;"></i> حجم ورقة الطباعة</h5>
+      <input type="hidden" name="voucherPaperSize" id="paperSizeInput" value="<%= settings.voucherPaperSize || 'A4' %>">
+      <div class="size-cards">
+        <%
+          const sizes = [
+            { val:'A4',  label:'A4', sub:'21 × 29.7 سم' },
+            { val:'A5',  label:'A5', sub:'14.8 × 21 سم' },
+            { val:'R80', label:'Thermal 80mm', sub:'حرارية 80 مم' },
+            { val:'R58', label:'Thermal 58mm', sub:'حرارية 58 مم' }
+          ];
+          sizes.forEach(sz => {
+        %>
+          <button type="button" class="size-card <%= (settings.voucherPaperSize||'A4') === sz.val ? 'active' : '' %>"
+                  onclick="selectSize('<%= sz.val %>', this)">
+            <div><%= sz.label %></div>
+            <div style="font-size:11px; font-weight:400; margin-top:3px;"><%= sz.sub %></div>
+          </button>
+        <% }); %>
+      </div>
+    </div>
+
+    <!-- ═══ إظهار / إخفاء العناصر ═══ -->
+    <div class="vs-section">
+      <h5><i class="fa-solid fa-eye" style="color:#10b981;"></i> إظهار / إخفاء عناصر السند</h5>
+
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+        حدد العناصر التي تريد إظهارها على السند المطبوع
+      </p>
+
+      <!-- رأس السند -->
+      <div style="font-size:12px; font-weight:800; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">رأس السند</div>
+      <%
+        const headerToggles = [
+          { name:'voucherShowLogo',         title:'شعار المعرض',         desc:'صورة الشعار في أعلى السند' },
+          { name:'voucherShowStoreName',     title:'اسم المعرض',          desc:'' },
+          { name:'voucherShowAddress',       title:'العنوان',             desc:'' },
+          { name:'voucherShowPhone',         title:'رقم الهاتف',          desc:'' },
+          { name:'voucherShowMobile',        title:'رقم الجوال',          desc:'' },
+          { name:'voucherShowEmail',         title:'البريد الإلكتروني',   desc:'' },
+          { name:'voucherShowWebsite',       title:'الموقع الإلكتروني',   desc:'' },
+          { name:'voucherShowCommercialReg', title:'السجل التجاري',       desc:'' },
+          { name:'voucherShowTaxNumber',     title:'الرقم الضريبي',       desc:'' },
+        ];
+        headerToggles.forEach(t => {
+      %>
+        <div class="switch-row">
+          <div class="switch-info">
+            <div class="sw-title"><%= t.title %></div>
+            <% if (t.desc) { %><div class="sw-desc"><%= t.desc %></div><% } %>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" name="<%= t.name %>"
+                   <%= settings[t.name] ? 'checked' : '' %>>
+          </div>
+        </div>
+      <% }); %>
+
+      <hr style="border-color:var(--border-color); margin:14px 0;">
+      <div style="font-size:12px; font-weight:800; color:var(--text-muted); margin-bottom:6px;">تفاصيل السند</div>
+      <%
+        const bodyToggles = [
+          { name:'voucherShowVoucherNumber',  title:'رقم السند',               desc:'' },
+          { name:'voucherShowDate',           title:'التاريخ',                 desc:'' },
+          { name:'voucherShowTime',           title:'الوقت',                   desc:'' },
+          { name:'voucherShowEmployee',       title:'اسم الموظف',              desc:'' },
+          { name:'voucherShowPaymentMethod',  title:'طريقة الدفع',             desc:'نقدي / شيك / تحويل...' },
+          { name:'voucherShowBank',           title:'اسم البنك',               desc:'يظهر عند الدفع بشيك' },
+          { name:'voucherShowChequeNumber',   title:'رقم الشيك',               desc:'' },
+          { name:'voucherShowInvoiceRef',     title:'رقم الفاتورة المرتبطة',   desc:'' },
+          { name:'voucherShowDescription',    title:'وصف العملية',             desc:'' },
+          { name:'voucherShowNotes',          title:'ملاحظات',                 desc:'' },
+          { name:'voucherShowAmountInWords',  title:'المبلغ كتابةً',           desc:'مثال: ألف شيكل فقط' },
+          { name:'voucherShowBalanceBefore',  title:'الرصيد قبل العملية',      desc:'' },
+          { name:'voucherShowBalanceAfter',   title:'الرصيد بعد العملية',      desc:'' },
+        ];
+        bodyToggles.forEach(t => {
+      %>
+        <div class="switch-row">
+          <div class="switch-info">
+            <div class="sw-title"><%= t.title %></div>
+            <% if (t.desc) { %><div class="sw-desc"><%= t.desc %></div><% } %>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" name="<%= t.name %>"
+                   <%= settings[t.name] ? 'checked' : '' %>>
+          </div>
+        </div>
+      <% }); %>
+
+      <hr style="border-color:var(--border-color); margin:14px 0;">
+      <div style="font-size:12px; font-weight:800; color:var(--text-muted); margin-bottom:6px;">ذيل السند والتوقيعات</div>
+      <%
+        const footerToggles = [
+          { name:'voucherShowReceiverSignature',   title:'توقيع المستلم',          desc:'' },
+          { name:'voucherShowClientSignature',     title:'توقيع العميل',           desc:'' },
+          { name:'voucherShowAccountantSignature', title:'توقيع المحاسب',          desc:'' },
+          { name:'voucherShowStamp',               title:'ختم المعرض',             desc:'' },
+          { name:'voucherShowQR',                  title:'رمز QR',                 desc:'رمز للتحقق من السند إلكترونياً' },
+          { name:'voucherShowBarcode',             title:'باركود',                 desc:'' },
+        ];
+        footerToggles.forEach(t => {
+      %>
+        <div class="switch-row">
+          <div class="switch-info">
+            <div class="sw-title"><%= t.title %></div>
+            <% if (t.desc) { %><div class="sw-desc"><%= t.desc %></div><% } %>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" name="<%= t.name %>"
+                   <%= settings[t.name] ? 'checked' : '' %>>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+
+    <!-- ═══ الألوان ═══ -->
+    <div class="vs-section">
+      <h5><i class="fa-solid fa-palette" style="color:#ec4899;"></i> تخصيص الألوان</h5>
+      <div class="row g-3">
+        <%
+          const colorFields = [
+            { name:'voucherHeaderColor', label:'لون الرأس',    def:'#1e293b' },
+            { name:'voucherTextColor',   label:'لون النص',     def:'#1e293b' },
+            { name:'voucherTableColor',  label:'لون الجدول',   def:'#f8f9fa' },
+            { name:'voucherFooterColor', label:'لون الذيل',    def:'#f1f5f9' },
+            { name:'voucherBorderColor', label:'لون الحدود',   def:'#dee2e6' },
+          ];
+          colorFields.forEach(cf => {
+        %>
+          <div class="col-md-4 col-6">
+            <label class="form-label"><%= cf.label %></label>
+            <div class="color-row">
+              <input type="color" class="color-swatch" name="<%= cf.name %>"
+                     id="<%= cf.name %>"
+                     value="<%= settings[cf.name] || cf.def %>">
+              <input type="text" class="form-control form-control-sm" id="<%= cf.name %>Txt"
+                     value="<%= settings[cf.name] || cf.def %>" maxlength="7" style="max-width:90px; font-size:12px;">
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <!-- ═══ الخطوط ═══ -->
+    <div class="vs-section">
+      <h5><i class="fa-solid fa-font" style="color:#f59e0b;"></i> إعدادات الخط</h5>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">نوع الخط</label>
+          <select class="form-select" name="voucherFont">
+            <% ['Cairo','Tajawal','Amiri','Noto Sans Arabic','IBM Plex Arabic'].forEach(f => { %>
+              <option value="<%= f %>" <%= (settings.voucherFont||'Cairo') === f ? 'selected' : '' %>><%= f %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="col-md-2 col-6">
+          <label class="form-label">حجم النص</label>
+          <input type="number" class="form-control" name="voucherFontSize"
+                 value="<%= settings.voucherFontSize || 12 %>" min="8" max="18">
+          <div class="form-hint">px</div>
+        </div>
+        <div class="col-md-2 col-6">
+          <label class="form-label">حجم العنوان</label>
+          <input type="number" class="form-control" name="voucherTitleSize"
+                 value="<%= settings.voucherTitleSize || 18 %>" min="12" max="32">
+          <div class="form-hint">px</div>
+        </div>
+        <div class="col-md-2 col-6">
+          <label class="form-label">حجم الشعار</label>
+          <input type="number" class="form-control" name="voucherLogoSize"
+                 value="<%= settings.voucherLogoSize || 70 %>" min="30" max="150">
+          <div class="form-hint">px</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ النصوص ═══ -->
+    <div class="vs-section">
+      <h5><i class="fa-solid fa-pen-line" style="color:#64748b;"></i> نصوص السند</h5>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label">نص الرأس الإضافي</label>
+          <input type="text" class="form-control" name="voucherHeaderText"
+                 value="<%= settings.voucherHeaderText || '' %>"
+                 placeholder="مثال: سند رسمي معتمد — يُطبع أسفل اسم المعرض">
+        </div>
+        <div class="col-12">
+          <label class="form-label">نص الذيل</label>
+          <input type="text" class="form-control" name="voucherFooterText"
+                 value="<%= settings.voucherFooterText || 'شكراً لتعاملكم مع معرض الصافي للمفروشات' %>"
+                 placeholder="مثال: شكراً لتعاملكم مع معرض الصافي للمفروشات">
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ معاينة السند ═══ -->
+    <div class="vs-section">
+      <h5><i class="fa-solid fa-eye" style="color:#0ea5e9;"></i> معاينة مباشرة</h5>
+      <div class="voucher-preview" id="voucherPreview" dir="rtl">
+        <!-- Header -->
+        <div class="vp-header" id="vpHeader">
+          <div>
+            <div class="vp-title" id="vpTitle">سند قبض</div>
+            <div style="font-size:11px; margin-top:4px;" id="vpStoreName"><%= settings.storeName || 'معرض الصافي للمفروشات' %></div>
+            <div style="font-size:10px; color:#64748b;" id="vpAddr"><%= settings.storeAddress || '' %></div>
+          </div>
+          <div class="vp-logo">🏪</div>
+        </div>
+        <!-- Details -->
+        <div class="vp-body">
+          <div class="vp-row"><span class="vp-lbl">رقم السند:</span> <span>RC-000001</span></div>
+          <div class="vp-row"><span class="vp-lbl">التاريخ:</span> <span><%= new Date().toLocaleDateString('ar-EG') %></span></div>
+          <div class="vp-row"><span class="vp-lbl">المستلم من:</span> <span>أحمد محمد</span></div>
+          <div class="vp-row"><span class="vp-lbl">طريقة الدفع:</span> <span>نقدي</span></div>
+          <div class="vp-row"><span class="vp-lbl">الوصف:</span> <span>دفعة فاتورة INV-001</span></div>
+          <div class="vp-row"><span class="vp-lbl">الموظف:</span> <span>الأدمن</span></div>
+        </div>
+        <!-- Amount -->
+        <div class="vp-amount" id="vpAmount" style="background:#f0fdf4; color:#166534;">
+          المبلغ: <strong>1,500 ₪</strong>
+        </div>
+        <div style="font-size:11px; text-align:center; color:#64748b; margin-bottom:8px;">
+          ألف وخمسمائة شيكل فقط
+        </div>
+        <!-- Signatures -->
+        <div class="vp-sigs">
+          <div class="vp-sig"><div class="vp-sig-line"></div>المستلم</div>
+          <div class="vp-sig"><div class="vp-sig-line"></div>العميل</div>
+          <div class="vp-sig"><div class="vp-sig-line"></div>المحاسب</div>
+        </div>
+        <!-- Footer -->
+        <div class="vp-footer" id="vpFooter">
+          <%= settings.voucherFooterText || 'شكراً لتعاملكم مع معرض الصافي للمفروشات' %>
+        </div>
+      </div>
+      <div class="form-hint mt-2 text-center">المعاينة تقريبية — الطباعة الفعلية قد تختلف قليلاً</div>
+    </div>
+
+    <!-- Save -->
+    <button type="submit" class="btn btn-gold w-100 py-3">
+      <i class="fa-solid fa-floppy-disk"></i> حفظ إعدادات السندات
+    </button>
+  </form>
+</div>
+
+<script>
+  /* ── Paper size selector ── */
+  function selectSize(val, btn) {
+    document.querySelectorAll('.size-card').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('paperSizeInput').value = val;
+  }
+
+  /* ── Sync color picker ↔ text input ── */
+  (function(){
+    const colors = ['voucherHeaderColor','voucherTextColor','voucherTableColor','voucherFooterColor','voucherBorderColor'];
+    colors.forEach(id => {
+      const picker = document.getElementById(id);
+      const txt    = document.getElementById(id + 'Txt');
+      if (!picker || !txt) return;
+      picker.addEventListener('input', () => {
+        txt.value = picker.value;
+        updatePreview();
+      });
+      txt.addEventListener('input', () => {
+        if (/^#[0-9a-fA-F]{6}$/.test(txt.value)) {
+          picker.value = txt.value;
+          updatePreview();
+        }
+      });
+    });
+  })();
+
+  /* ── Live preview update ── */
+  function updatePreview() {
+    const hc = document.getElementById('voucherHeaderColor') ? document.getElementById('voucherHeaderColor').value : '#1e293b';
+    const tc = document.getElementById('voucherTableColor')  ? document.getElementById('voucherTableColor').value  : '#f8f9fa';
+    const fc = document.getElementById('voucherFooterColor') ? document.getElementById('voucherFooterColor').value : '#f1f5f9';
+    const hdr = document.getElementById('vpHeader');
+    const amt = document.getElementById('vpAmount');
+    const ftr = document.getElementById('vpFooter');
+    if (hdr) { hdr.style.borderColor = hc; hdr.style.color = hc; }
+    if (amt) { amt.style.background = tc; }
+    if (ftr) { ftr.style.borderColor = hc; ftr.style.background = fc; }
+
+    const ftTxt = document.querySelector('[name="voucherFooterText"]');
+    if (ftr && ftTxt) ftr.textContent = ftTxt.value || 'شكراً لتعاملكم مع معرض الصافي للمفروشات';
+    const htTxt = document.querySelector('[name="voucherHeaderText"]');
+    const htEl  = document.getElementById('vpTitle');
+    // update title only if header text is not empty
+  }
+
+  // Footer text live update
+  (function(){
+    const inp = document.querySelector('[name="voucherFooterText"]');
+    if (inp) inp.addEventListener('input', updatePreview);
+  })();
+</script>
+
+<%- include('../partials/admin-footer') %>

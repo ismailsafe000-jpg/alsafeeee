@@ -1,0 +1,384 @@
+<%- include('../partials/admin-header') %>
+
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+  <div class="d-flex align-items-center gap-3">
+    <a href="/admin/catalogs" class="btn btn-outline-secondary">
+      <i class="fa-solid fa-arrow-right"></i>
+    </a>
+    <div>
+      <h2 class="section-title mb-0">
+        <i class="fa-solid fa-images"></i> صور الكتالوج
+      </h2>
+      <p class="text-muted small mb-0 mt-1">
+        <span class="badge-luxury"><%= catalog.name %></span>
+        &nbsp; <span id="imgCount"><%= catalog.images.length %></span> صورة
+      </p>
+    </div>
+  </div>
+  <a href="/catalog/<%= catalog._id %>" target="_blank" class="btn btn-outline-info">
+    <i class="fa-solid fa-external-link-alt"></i> معاينة
+  </a>
+</div>
+
+<!-- رفع صور جديدة -->
+<div class="luxury-card p-4 mb-4">
+  <h6 class="fw-bold mb-3" style="color: var(--primary-gold);">
+    <i class="fa-solid fa-cloud-upload-alt"></i> رفع صور جديدة
+  </h6>
+
+  <!-- منطقة السحب والإفلات -->
+  <div class="upload-drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <i class="fa-solid fa-cloud-arrow-up fa-2x mb-2" style="color: var(--primary-gold);"></i>
+    <p class="mb-1 fw-bold">اضغط لاختيار الصور أو اسحبها هنا</p>
+    <p class="text-muted small mb-0">يمكنك اختيار حتى 100 صورة دفعة واحدة — الحجم الأقصى 10MB لكل صورة</p>
+  </div>
+  <input type="file" id="fileInput" name="images" multiple accept="image/*" style="display:none">
+
+  <!-- معاينة الصور المختارة -->
+  <div id="previewGrid" class="preview-grid mt-3"></div>
+
+  <!-- أزرار الرفع -->
+  <div id="uploadActions" style="display:none" class="mt-3">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <button type="button" class="btn btn-gold" id="startUploadBtn" onclick="startUpload()">
+        <i class="fa-solid fa-upload"></i> رفع الصور (<span id="selectedCount">0</span>)
+      </button>
+      <button type="button" class="btn btn-outline-secondary" onclick="clearPreview()">
+        <i class="fa-solid fa-xmark"></i> إلغاء
+      </button>
+    </div>
+  </div>
+
+  <!-- شريط التحميل -->
+  <div id="progressWrap" style="display:none" class="mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <span class="fw-bold" style="color:var(--primary-gold);">
+        <i class="fa-solid fa-spinner fa-spin me-1"></i> جاري رفع الصور...
+      </span>
+      <span id="progressText" class="fw-bold">0%</span>
+    </div>
+    <div class="progress" style="height: 18px; border-radius: 10px; background: var(--border-color);">
+      <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+        role="progressbar" style="width:0%; background: linear-gradient(90deg,#b5952f,#d4af37); border-radius:10px;"
+        aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+      </div>
+    </div>
+    <div id="progressDetail" class="text-muted small mt-2 text-center"></div>
+  </div>
+
+  <!-- رسالة النتيجة -->
+  <div id="uploadResult" class="mt-3" style="display:none"></div>
+</div>
+
+<!-- الصور الحالية -->
+<% if (catalog.images.length === 0) { %>
+  <div id="emptyState" class="text-center py-5" style="background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border-color);">
+    <i class="fa-solid fa-photo-film fa-3x mb-3" style="color: var(--primary-gold); opacity:0.4;"></i>
+    <h6 style="color: var(--text-muted);">لا توجد صور في هذا الكتالوج بعد</h6>
+    <p class="text-muted small">ارفع صور باستخدام الاستمارة أعلاه</p>
+  </div>
+<% } %>
+
+<div id="currentImagesSection">
+  <% if (catalog.images.length > 0) { %>
+    <h6 class="fw-bold mb-3">
+      <i class="fa-solid fa-grip"></i> الصور الحالية (<span id="currentCount"><%= catalog.images.length %></span>)
+    </h6>
+  <% } %>
+  <div class="img-manage-grid" id="imgGrid">
+    <% catalog.images.forEach((img, idx) => { %>
+      <div class="img-manage-card" id="img-<%= img._id %>">
+        <div class="img-manage-thumb-wrap" onclick="openLightbox('<%= img.url %>')">
+          <img src="<%= img.url %>" class="img-manage-thumb" alt="" loading="lazy">
+          <div class="img-manage-overlay">
+            <i class="fa-solid fa-expand fa-lg"></i>
+          </div>
+        </div>
+        <div class="img-manage-footer">
+          <form action="/admin/catalogs/<%= catalog._id %>/images/caption/<%= img._id %>" method="POST" class="d-flex gap-1 mb-2">
+            <input type="text" name="caption" value="<%= img.caption %>"
+                   class="form-control form-control-sm" placeholder="تسمية توضيحية...">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">
+              <i class="fa-solid fa-save"></i>
+            </button>
+          </form>
+          <form action="/admin/catalogs/<%= catalog._id %>/images/delete/<%= img._id %>" method="POST"
+                onsubmit="return confirm('حذف هذه الصورة؟')">
+            <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+              <i class="fa-solid fa-trash me-1"></i> حذف
+            </button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" class="lbox-overlay" onclick="closeLightbox()">
+  <div class="lbox-close" onclick="closeLightbox()"><i class="fa-solid fa-xmark"></i></div>
+  <img id="lboxImg" src="" class="lbox-img" onclick="event.stopPropagation()">
+</div>
+
+<style>
+.upload-drop-zone {
+  border: 2px dashed var(--primary-gold);
+  border-radius: 14px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  background: rgba(212,175,55,0.03);
+  transition: background 0.2s;
+}
+.upload-drop-zone:hover { background: rgba(212,175,55,0.07); }
+.upload-drop-zone.dragover { background: rgba(212,175,55,0.12); border-color: #b5952f; }
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+}
+.preview-item {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  aspect-ratio: 1;
+}
+.preview-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.preview-item .rm-btn {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(220,38,38,0.85); color: white;
+  border: none; border-radius: 50%; width: 22px; height: 22px;
+  font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: transform 0.15s;
+}
+.preview-item .rm-btn:hover { transform: scale(1.2); }
+.preview-item .status-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.preview-item .status-overlay.uploading { background: rgba(0,0,0,0.45); }
+.preview-item .status-overlay.done     { background: rgba(21,128,61,0.55); color: #86efac; }
+.preview-item .status-overlay.error    { background: rgba(185,28,28,0.55); color: #fca5a5; }
+
+.img-manage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+.img-manage-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+.img-manage-thumb-wrap {
+  position: relative; height: 140px;
+  cursor: zoom-in; overflow: hidden; background: #0f172a;
+}
+.img-manage-thumb { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+.img-manage-thumb-wrap:hover .img-manage-thumb { transform: scale(1.06); }
+.img-manage-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.35); color: white; opacity: 0; transition: opacity 0.2s;
+}
+.img-manage-thumb-wrap:hover .img-manage-overlay { opacity: 1; }
+.img-manage-footer { padding: 10px; }
+
+.lbox-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92); z-index: 9999;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(6px);
+}
+.lbox-overlay.active { display: flex; }
+.lbox-img { max-width: 90vw; max-height: 90vh; border-radius: 8px; object-fit: contain; }
+.lbox-close {
+  position: fixed; top: 20px; right: 24px;
+  color: white; font-size: 24px; cursor: pointer;
+  background: rgba(255,255,255,0.12); border-radius: 50%;
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.lbox-close:hover { background: rgba(220,38,38,0.7); }
+
+@media (max-width: 576px) {
+  .img-manage-grid { grid-template-columns: repeat(2, 1fr); }
+  .preview-grid { grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); }
+}
+</style>
+
+<script>
+const CATALOG_ID = '<%= catalog._id %>';
+let selectedFiles = [];
+let previewItems  = [];
+
+// ===== اختيار الملفات =====
+document.getElementById('fileInput').addEventListener('change', function() {
+  addFiles(Array.from(this.files));
+  this.value = ''; // إعادة ضبط حتى يمكن اختيار نفس الملفات مجدداً
+});
+
+function addFiles(files) {
+  files.forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    selectedFiles.push(file);
+    const idx = selectedFiles.length - 1;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const div = document.createElement('div');
+      div.className = 'preview-item';
+      div.id = 'prev-' + idx;
+      div.innerHTML = `
+        <img src="${e.target.result}" alt="">
+        <button type="button" class="rm-btn" onclick="removeFile(${idx})" title="إزالة">
+          <i class="fa-solid fa-xmark"></i>
+        </button>`;
+      document.getElementById('previewGrid').appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+  updateUploadBtn();
+}
+
+function removeFile(idx) {
+  selectedFiles[idx] = null;
+  const el = document.getElementById('prev-' + idx);
+  if (el) el.style.opacity = '0.2';
+  const rmBtn = el && el.querySelector('.rm-btn');
+  if (rmBtn) rmBtn.disabled = true;
+  updateUploadBtn();
+}
+
+function updateUploadBtn() {
+  const active = selectedFiles.filter(Boolean).length;
+  document.getElementById('selectedCount').textContent = active;
+  document.getElementById('uploadActions').style.display = active > 0 ? 'block' : 'none';
+}
+
+function clearPreview() {
+  selectedFiles = [];
+  document.getElementById('previewGrid').innerHTML = '';
+  document.getElementById('uploadActions').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('uploadResult').style.display = 'none';
+}
+
+// ===== رفع الصور بـ XMLHttpRequest مع شريط التحميل =====
+function startUpload() {
+  const files = selectedFiles.filter(Boolean);
+  if (!files.length) return;
+
+  // إخفاء أزرار، إظهار شريط
+  document.getElementById('uploadActions').style.display = 'none';
+  document.getElementById('dropZone').style.pointerEvents = 'none';
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('uploadResult').style.display = 'none';
+
+  // وضع أيقونة التحميل على كل صورة مختارة
+  selectedFiles.forEach((f, idx) => {
+    if (!f) return;
+    const el = document.getElementById('prev-' + idx);
+    if (el) {
+      el.querySelector('.rm-btn') && (el.querySelector('.rm-btn').style.display = 'none');
+      const ov = document.createElement('div');
+      ov.className = 'status-overlay uploading';
+      ov.id = 'ov-' + idx;
+      ov.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      el.appendChild(ov);
+    }
+  });
+
+  const formData = new FormData();
+  files.forEach(f => formData.append('images', f));
+
+  const xhr = new XMLHttpRequest();
+
+  xhr.upload.addEventListener('progress', e => {
+    if (!e.lengthComputable) return;
+    const pct = Math.round((e.loaded / e.total) * 100);
+    setProgress(pct, `${pct}%`, `تم رفع ${formatSize(e.loaded)} من ${formatSize(e.total)}`);
+  });
+
+  xhr.addEventListener('load', () => {
+    setProgress(100, '100%', 'اكتمل الرفع!');
+
+    // وضع علامة نجاح على كل صورة
+    selectedFiles.forEach((f, idx) => {
+      if (!f) return;
+      const ov = document.getElementById('ov-' + idx);
+      if (ov) { ov.className = 'status-overlay done'; ov.innerHTML = '<i class="fa-solid fa-check-circle"></i>'; }
+    });
+
+    let count = 0;
+    try {
+      const resp = JSON.parse(xhr.responseText);
+      count = resp.count || files.length;
+    } catch(e) { count = files.length; }
+
+    showResult('success', `<i class="fa-solid fa-check-circle me-2"></i>تم رفع ${count} صورة بنجاح! يتم تحديث الصفحة...`);
+
+    setTimeout(() => location.reload(), 1400);
+  });
+
+  xhr.addEventListener('error', () => {
+    selectedFiles.forEach((f, idx) => {
+      if (!f) return;
+      const ov = document.getElementById('ov-' + idx);
+      if (ov) { ov.className = 'status-overlay error'; ov.innerHTML = '<i class="fa-solid fa-xmark-circle"></i>'; }
+    });
+    setProgress(0, 'خطأ', '');
+    showResult('danger', '<i class="fa-solid fa-triangle-exclamation me-2"></i>حدث خطأ أثناء الرفع. حاول مجدداً.');
+    document.getElementById('dropZone').style.pointerEvents = '';
+    document.getElementById('uploadActions').style.display = 'block';
+  });
+
+  xhr.open('POST', `/admin/catalogs/${CATALOG_ID}/images/add`);
+  xhr.send(formData);
+}
+
+function setProgress(pct, label, detail) {
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressBar').setAttribute('aria-valuenow', pct);
+  document.getElementById('progressText').textContent = label;
+  document.getElementById('progressDetail').textContent = detail;
+}
+
+function showResult(type, html) {
+  const el = document.getElementById('uploadResult');
+  el.style.display = 'block';
+  el.innerHTML = `<div class="alert alert-${type} d-flex align-items-center mb-0">${html}</div>`;
+}
+
+function formatSize(bytes) {
+  if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return Math.round(bytes / 1024) + ' KB';
+}
+
+// ===== سحب وإفلات =====
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('dragover');
+  addFiles(Array.from(e.dataTransfer.files));
+});
+
+// ===== Lightbox =====
+function openLightbox(url) {
+  document.getElementById('lboxImg').src = url;
+  document.getElementById('lightbox').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script>
+
+<%- include('../partials/admin-footer') %>

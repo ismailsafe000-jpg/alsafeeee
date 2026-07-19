@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ar-u-nu-latn" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>زياراتي | <%= settings.storeName %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--gold:#d4af37;--bg:#f0f4f8;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;}
+    [data-theme="dark"]{--bg:#0d1117;--card:#161b22;--text:#e6edf3;--muted:#8b949e;--border:#30363d;}
+    body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+    .topbar{background:linear-gradient(135deg,#0f172a,#1e3a5f);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;box-shadow:0 3px 20px rgba(0,0,0,.3);}
+    .brand{color:var(--gold);font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px;text-decoration:none;}
+    .btn-icon{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#cbd5e1;padding:7px 14px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:.2s;}
+    .btn-icon:hover{background:rgba(212,175,55,.15);color:var(--gold);}
+    .page-wrap{max-width:780px;margin:0 auto;padding:24px 16px 60px;}
+    .page-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;}
+    .page-head h2{font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px;}
+    .page-head h2 i{color:var(--gold);}
+    .visit-card{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:14px;overflow:hidden;transition:.2s;text-decoration:none;color:var(--text);display:block;}
+    .visit-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.09);transform:translateY(-2px);color:var(--text);}
+    .vc-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border);}
+    .vc-num{background:linear-gradient(135deg,#d4af37,#c5a030);color:white;border-radius:9px;padding:5px 13px;font-size:15px;font-weight:800;}
+    .vc-date{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+    .vc-badges{display:flex;gap:6px;flex-wrap:wrap;margin-right:auto;}
+    .vc-badge{background:rgba(212,175,55,.07);border:1px solid rgba(212,175,55,.2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:3px;}
+    .vc-body{padding:13px 18px;font-size:13px;color:var(--muted);display:flex;align-items:center;justify-content:space-between;}
+    .vc-arrow{color:rgba(212,175,55,.5);font-size:14px;}
+    .empty-card{text-align:center;padding:60px 20px;background:var(--card);border-radius:14px;border:1px solid var(--border);}
+    .empty-card i{font-size:48px;color:rgba(212,175,55,.25);display:block;margin-bottom:12px;}
+    footer{text-align:center;padding:16px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:auto;}
+  </style>
+</head>
+<body>
+<nav class="topbar">
+  <a href="/" class="brand"><i class="fa-solid fa-couch"></i> <%= settings.storeName %></a>
+  <div style="display:flex;gap:8px;">
+    <a href="/customer/" class="btn-icon"><i class="fa-solid fa-arrow-right"></i> رجوع</a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="page-head">
+    <h2><i class="fa-solid fa-calendar-check"></i> زياراتي</h2>
+    <div style="font-size:13px;color:var(--muted);">أهلاً، <strong style="color:var(--gold);"><%= customer.fullName %></strong></div>
+  </div>
+
+  <% if(!visits || visits.length === 0){ %>
+  <div class="empty-card">
+    <i class="fa-solid fa-ruler-combined"></i>
+    <h5 style="color:var(--muted);">لا توجد زيارات بعد</h5>
+    <p style="font-size:13px;color:var(--muted);margin-top:6px;">لم يتم تسجيل أي زيارات لك حتى الآن</p>
+  </div>
+  <% } else { %>
+    <% visits.forEach(v => { %>
+    <a href="/customer/visits/<%= v._id %>" class="visit-card">
+      <div class="vc-head">
+        <div class="vc-num"><i class="fa-solid fa-star me-1" style="font-size:10px;"></i> زيارة #<%= v.visitNumber %></div>
+        <div class="vc-date"><i class="fa-solid fa-calendar"></i> <%= new Date(v.visitDate).toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric'}) %></div>
+        <div class="vc-badges">
+          <% if(v.sofas && v.sofas.length){%><div class="vc-badge"><i class="fa-solid fa-couch"></i> <%= v.sofas.length %> كنب</div><%}%>
+          <% if(v.qaadas && v.qaadas.length){%><div class="vc-badge"><i class="fa-solid fa-chair"></i> <%= v.qaadas.length %> قعدة</div><%}%>
+          <% if(v.rooms && v.rooms.length){%><div class="vc-badge"><i class="fa-solid fa-border-all"></i> <%= v.rooms.length %> غرفة</div><%}%>
+          <% if(v.windows && v.windows.length){%><div class="vc-badge"><i class="fa-solid fa-window-maximize"></i> <%= v.windows.length %> شباك</div><%}%>
+        </div>
+      </div>
+      <div class="vc-body">
+        <span><% if(v.generalNotes){ %><i class="fa-solid fa-note-sticky me-1" style="color:var(--gold);"></i><%= v.generalNotes.slice(0,60) %><%= v.generalNotes.length>60?'...':'' %><% } else { %>اضغط لعرض تفاصيل الزيارة<% } %></span>
+        <i class="fa-solid fa-chevron-left vc-arrow"></i>
+      </div>
+    </a>
+    <% }) %>
+  <% } %>
+</div>
+
+<footer><i class="fa-solid fa-couch me-1" style="color:var(--gold);"></i> <%= settings.storeName %></footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* 25002500 062a062d0648064a0644 0627064406230631064206270645 06270644063906310628064a0629 064406440627062a064a0646064a0629 25002500 */
+(function(){
+  function fix(n){if(n.nodeType===3){n.nodeValue=n.nodeValue.replace(/[0660-0669]/g,function(d){return d.charCodeAt(0)-0x0660;});}else{n.childNodes.forEach(fix);}}
+  document.addEventListener('DOMContentLoaded',function(){fix(document.body);});
+})();
+</script>
+</body>
+</html>

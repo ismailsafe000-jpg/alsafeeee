@@ -1,0 +1,465 @@
+<%- include('../partials/admin-header') %>
+<style>
+  .inv-form-wrap { max-width: 960px; margin: 0 auto; }
+  .form-section {
+    background: var(--card-bg, white); border-radius: 14px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    padding: 22px 26px; margin-bottom: 20px;
+  }
+  .form-section h5 {
+    font-size: 15px; font-weight: 800; color: var(--text-main, #1e293b);
+    border-bottom: 2px solid var(--border-color, #e2e8f0);
+    padding-bottom: 10px; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .item-row {
+    background: var(--table-hover, #f8fafc);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; position: relative;
+  }
+  .item-row .remove-btn {
+    position: absolute; top: 8px; left: 10px;
+    background: #fee2e2; border: none; color: #dc2626;
+    border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 12px;
+  }
+  .item-row .remove-btn:hover { background: #fca5a5; }
+  .qty-computed {
+    background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.3);
+    border-radius: 8px; padding: 6px 12px; font-weight: 800; font-size: 14px;
+    color: #92400e; text-align: center; min-width: 80px;
+  }
+  [data-theme="dark"] .qty-computed { color: #d4af37; }
+  .total-bar {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    border-radius: 12px; padding: 18px 24px; color: white; margin-top: 16px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+  }
+  .total-bar .tb-item { display: flex; flex-direction: column; align-items: center; }
+  .total-bar .tb-lbl { font-size: 12px; color: #94a3b8; }
+  .total-bar .tb-val { font-size: 22px; font-weight: 800; color: #d4af37; }
+  .pay-section { border: 2px dashed var(--border-color, #e2e8f0); border-radius: 12px; padding: 18px 22px; margin-top: 8px; }
+  .pay-section.active { border-color: #d4af37; border-style: solid; }
+  .pay-fields { display: none; margin-top: 16px; }
+  .pay-fields.show { display: block; }
+  .check-fields-wrap {
+    background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 10px; padding: 14px; margin-top: 12px; display: none;
+  }
+  .check-fields-wrap.show { display: block; }
+  .save-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  /* جدول الدفعات السابقة */
+  .pay-history { background:var(--table-hover); border-radius:10px; padding:12px; margin-top:12px; }
+  .pay-history .pay-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border-color); font-size:13px; }
+  .pay-history .pay-row:last-child { border-bottom:none; }
+</style>
+
+<div class="inv-form-wrap">
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+  <h2 class="section-title mb-0">
+    <i class="fa-solid fa-store"></i>
+    <%= typeof sale !== 'undefined' && sale ? 'تعديل مبيعة ' + sale.saleNumber : 'مبيعة جديدة' %>
+  </h2>
+  <a href="/admin/sales" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-right"></i> رجوع للمبيعات
+  </a>
+</div>
+
+<form action="<%= typeof sale !== 'undefined' && sale ? '/admin/sales/edit/' + sale._id : '/admin/sales/add' %>"
+      method="POST" id="saleForm">
+
+  <!-- ===== 1. بيانات الزبون ===== -->
+  <div class="form-section">
+    <h5><i class="fa-solid fa-user" style="color:#d4af37;"></i> بيانات الزبون</h5>
+    <div class="row g-3">
+      <div class="col-md-5">
+        <label class="form-label fw-bold">اسم الزبون</label>
+        <input type="text" name="customerName" class="form-control"
+               value="<%= typeof sale!=='undefined'&&sale ? sale.customerName : '' %>"
+               placeholder="زبون نقدي، زبون زائر، محمد أحمد...">
+        <div class="save-hint">اكتب أي اسم مباشرة — لا يشترط زبون من النظام</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-bold">رقم الهاتف (اختياري)</label>
+        <input type="text" name="customerPhone" class="form-control"
+               value="<%= typeof sale!=='undefined'&&sale ? sale.customerPhone : '' %>"
+               placeholder="05xxxxxxxx">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">تاريخ المبيعة</label>
+        <input type="datetime-local" name="saleDate" class="form-control"
+               value="<%= typeof sale!=='undefined'&&sale ? new Date(sale.saleDate).toISOString().slice(0,16) : new Date().toISOString().slice(0,16) %>">
+      </div>
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="saveCustomer" name="saveCustomer"
+                 <%= typeof sale!=='undefined'&&sale&&sale.savedCustomerId ? 'checked' : '' %>>
+          <label class="form-check-label fw-bold" for="saveCustomer">
+            ☑ حفظ الزبون في النظام (اختياري)
+          </label>
+          <div class="save-hint">عند التفعيل يُحفظ الزبون في قاعدة البيانات ويصبح متاحاً في الفواتير</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 2. الأصناف ===== -->
+  <div class="form-section">
+    <h5><i class="fa-solid fa-list-check" style="color:#d4af37;"></i> الأصناف</h5>
+    <div id="itemsContainer">
+      <% if(typeof sale!=='undefined'&&sale&&sale.items.length>0) { %>
+        <% sale.items.forEach((item,idx) => { %>
+          <div class="item-row" data-idx="<%= idx %>">
+            <button type="button" class="remove-btn" onclick="removeRow(this)">
+              <i class="fa-solid fa-times"></i> حذف
+            </button>
+            <div class="row g-2 align-items-end">
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-bold" style="font-size:12px;">اسم الصنف / البيان</label>
+                <input class="form-control item-desc" placeholder="اسم الصنف أو البيان..."
+                       value="<%= item.description %>" required>
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label fw-bold" style="font-size:12px;">نوع الوحدة</label>
+                <select class="form-select unit-type" onchange="onUnitChange(this)">
+                  <option value="piece"   <%= item.quantityType==='piece'   ?'selected':'' %>>كمية (حبة)</option>
+                  <option value="meter"   <%= item.quantityType==='meter'   ?'selected':'' %>>متر طولي</option>
+                  <option value="sqmeter" <%= item.quantityType==='sqmeter' ?'selected':'' %>>متر مربع</option>
+                </select>
+              </div>
+              <div class="col-6 col-md-2">
+                <div class="length-group">
+                  <label class="form-label fw-bold qty-label" style="font-size:12px;">
+                    <%= item.quantityType==='piece' ? 'الكمية' : 'الطول (م)' %>
+                  </label>
+                  <input type="number" class="form-control item-length" placeholder="0" min="0" step="any"
+                         value="<%= item.quantityType==='sqmeter' ? item.length : item.quantity %>"
+                         oninput="calculateRow(this.closest('.item-row'))">
+                </div>
+              </div>
+              <div class="col-6 col-md-2 width-group" style="display:<%= item.quantityType==='sqmeter'?'':'none' %>;">
+                <label class="form-label fw-bold" style="font-size:12px;">العرض (م)</label>
+                <input type="number" class="form-control item-width" placeholder="0" min="0" step="any"
+                       value="<%= item.width || 1 %>"
+                       oninput="calculateRow(this.closest('.item-row'))">
+              </div>
+              <div class="col-6 col-md-1" style="min-width:80px;">
+                <label class="form-label fw-bold" style="font-size:12px;">الإجمالي</label>
+                <div class="qty-computed"><%= item.quantity %></div>
+                <input type="hidden" class="item-qty-hidden" value="<%= item.quantity %>">
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label fw-bold" style="font-size:12px;">سعر الوحدة (₪)</label>
+                <input type="number" class="form-control item-price" placeholder="0.00" min="0" step="any"
+                       value="<%= item.unitPrice %>"
+                       oninput="calculateRow(this.closest('.item-row'))">
+              </div>
+              <div class="col-6 col-md-1">
+                <label class="form-label fw-bold" style="font-size:12px;">خصم (₪)</label>
+                <input type="number" class="form-control item-discount" placeholder="0" min="0" step="any"
+                       value="<%= item.discount||0 %>"
+                       oninput="calculateRow(this.closest('.item-row'))">
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label fw-bold" style="font-size:12px;">الإجمالي (₪)</label>
+                <input type="number" class="form-control item-total fw-bold text-danger" readonly
+                       value="<%= item.total %>">
+              </div>
+            </div>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+
+    <div class="d-flex gap-2 mt-2 flex-wrap">
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addItemRow()">
+        <i class="fa-solid fa-plus"></i> إضافة صنف حر
+      </button>
+    </div>
+
+    <!-- الإجمالي -->
+    <div class="row g-3 mt-3 align-items-center">
+      <div class="col-md-4">
+        <label class="form-label fw-bold">خصم إجمالي (₪)</label>
+        <input type="number" name="discount" id="discountInput" class="form-control"
+               value="<%= typeof sale!=='undefined'&&sale ? sale.discount : 0 %>"
+               min="0" step="0.01" oninput="calculateTotal()">
+      </div>
+      <div class="col-md-5">
+        <label class="form-label fw-bold">ملاحظات</label>
+        <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات اختيارية..."><%= typeof sale!=='undefined'&&sale ? sale.notes : '' %></textarea>
+      </div>
+    </div>
+
+    <div class="total-bar mt-3">
+      <div class="tb-item">
+        <span class="tb-lbl">المجموع الفرعي</span>
+        <span class="tb-val" id="subtotalDisplay"><%= typeof sale!=='undefined'&&sale ? sale.subtotal.toLocaleString('ar-EG') : '0' %></span>
+      </div>
+      <div style="color:#475569;font-size:20px;">−</div>
+      <div class="tb-item">
+        <span class="tb-lbl">الخصم</span>
+        <span class="tb-val" id="discountDisplay" style="color:#4ade80;"><%= typeof sale!=='undefined'&&sale ? sale.discount.toLocaleString('ar-EG') : '0' %></span>
+      </div>
+      <div style="color:#475569;font-size:20px;">=</div>
+      <div class="tb-item">
+        <span class="tb-lbl">الإجمالي النهائي ₪</span>
+        <span class="tb-val" id="totalDisplay" style="color:#f87171;font-size:26px;"><%= typeof sale!=='undefined'&&sale ? sale.totalAmount.toLocaleString('ar-EG') : '0' %></span>
+      </div>
+      <input type="hidden" name="totalAmount" id="totalAmount" value="<%= typeof sale!=='undefined'&&sale ? sale.totalAmount : 0 %>">
+      <input type="hidden" name="subtotal" id="subtotalHidden" value="<%= typeof sale!=='undefined'&&sale ? sale.subtotal : 0 %>">
+    </div>
+  </div>
+
+  <!-- ===== 3. دفعة جديدة ===== -->
+  <% const isEdit = typeof sale!=='undefined' && sale && sale._id; %>
+  <div class="form-section">
+    <h5><i class="fa-solid fa-money-bill-wave" style="color:#d4af37;"></i>
+      <%= isEdit ? 'إضافة دفعة جديدة' : 'دفعة مع المبيعة' %>
+    </h5>
+
+    <% if(isEdit && sale.payments && sale.payments.length > 0) { %>
+      <div class="pay-history mb-3">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-muted);">
+          <i class="fa-solid fa-history me-1"></i> الدفعات السابقة
+        </div>
+        <% sale.payments.forEach(p => { %>
+          <div class="pay-row">
+            <div>
+              <span style="font-weight:700;"><%= p.amount.toLocaleString('ar-EG') %> ₪</span>
+              <span style="color:var(--text-muted); margin-right:8px; font-size:12px;">
+                <%= p.method==='cash'?'نقداً':p.method==='bank_transfer'?'تحويل':p.method==='check'?'شيك':'بطاقة' %>
+              </span>
+              <span style="font-size:11px;color:var(--text-muted);">
+                <%= new Date(p.date).toLocaleDateString('ar-EG') %>
+              </span>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger" style="padding:2px 8px;font-size:11px;"
+                    onclick="deleteSalePayment('/admin/sales/payment/delete/<%= sale._id %>/<%= p._id %>')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        <% }) %>
+        <div style="font-size:13px;font-weight:800;padding-top:8px;">
+          إجمالي محصّل: <span style="color:#059669;"><%= sale.paidAmount.toLocaleString('ar-EG') %> ₪</span>
+          &nbsp;|&nbsp; متبقي: <span style="color:#dc2626;"><%= sale.remainingBalance.toLocaleString('ar-EG') %> ₪</span>
+        </div>
+      </div>
+    <% } %>
+
+    <div class="pay-section" id="paySection">
+      <label class="d-flex align-items-center gap-2 fw-bold" style="cursor:pointer;font-size:15px;">
+        <input type="checkbox" id="payEnabled" name="payEnabled" value="on"
+               class="form-check-input" style="width:22px;height:22px;"
+               onchange="togglePayFields()">
+        <%= isEdit ? 'إضافة دفعة جديدة الآن' : 'إضافة دفعة مع المبيعة (اختياري)' %>
+      </label>
+
+      <div class="pay-fields" id="payFields">
+        <div class="row g-3 mt-1">
+          <div class="col-md-3">
+            <label class="form-label fw-bold">طريقة الدفع</label>
+            <select name="payMethod" id="payMethod" class="form-select" onchange="toggleCheckFields()">
+              <option value="cash">نقداً</option>
+              <option value="bank_transfer">تحويل بنكي</option>
+              <option value="check">شيك</option>
+              <option value="card">بطاقة</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">المبلغ (₪)</label>
+            <input type="number" name="payAmount" class="form-control" step="0.01" min="0.01" placeholder="0.00">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">تاريخ الدفع</label>
+            <input type="datetime-local" name="payDate" class="form-control"
+                   value="<%= new Date().toISOString().slice(0,16) %>">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">ملاحظات الدفعة</label>
+            <input type="text" name="payNotes" class="form-control" placeholder="اختياري">
+          </div>
+        </div>
+        <div class="check-fields-wrap" id="checkFields">
+          <p class="fw-bold mb-2" style="color:#d97706;"><i class="fa-solid fa-money-check"></i> بيانات الشيك</p>
+          <div class="row g-3">
+            <div class="col-md-3"><label>رقم الشيك</label><input name="checkNumber" class="form-control"></div>
+            <div class="col-md-3"><label>اسم البنك</label><input name="checkBankName" class="form-control"></div>
+            <div class="col-md-3"><label>تاريخ الاستحقاق</label><input type="date" name="checkDueDate" class="form-control"></div>
+            <div class="col-md-3">
+              <label>حالة الشيك</label>
+              <select name="checkStatus" class="form-select">
+                <option value="pending">قيد الانتظار</option>
+                <option value="cleared">تم الصرف</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-3 mb-5">
+    <button type="submit" class="btn btn-gold px-5" style="font-size:16px;padding:12px 40px;">
+      <i class="fa-solid fa-floppy-disk"></i> <%= isEdit ? 'حفظ التعديلات' : 'حفظ المبيعة' %>
+    </button>
+    <a href="/admin/sales" class="btn btn-outline-secondary px-4">إلغاء</a>
+  </div>
+
+</form>
+</div>
+
+<script>
+function addItemRow(data) {
+  const d = data || {};
+  const div = document.createElement('div');
+  div.className = 'item-row';
+  div.innerHTML = `
+    <button type="button" class="remove-btn" onclick="removeRow(this)">
+      <i class="fa-solid fa-times"></i> حذف
+    </button>
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-bold" style="font-size:12px;">اسم الصنف / البيان</label>
+        <input class="form-control item-desc" placeholder="اسم الصنف أو البيان..." value="${d.description||''}" required>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label fw-bold" style="font-size:12px;">نوع الوحدة</label>
+        <select class="form-select unit-type" onchange="onUnitChange(this)">
+          <option value="piece">كمية (حبة)</option>
+          <option value="meter">متر طولي</option>
+          <option value="sqmeter">متر مربع</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="length-group">
+          <label class="form-label fw-bold qty-label" style="font-size:12px;">الكمية</label>
+          <input type="number" class="form-control item-length" placeholder="0" min="0" step="any"
+                 value="${d.length||1}" oninput="calculateRow(this.closest('.item-row'))">
+        </div>
+      </div>
+      <div class="col-6 col-md-2 width-group" style="display:none;">
+        <label class="form-label fw-bold" style="font-size:12px;">العرض (م)</label>
+        <input type="number" class="form-control item-width" placeholder="0" min="0" step="any"
+               value="${d.width||1}" oninput="calculateRow(this.closest('.item-row'))">
+      </div>
+      <div class="col-6 col-md-1" style="min-width:80px;">
+        <label class="form-label fw-bold" style="font-size:12px;">الإجمالي</label>
+        <div class="qty-computed">—</div>
+        <input type="hidden" class="item-qty-hidden" value="1">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label fw-bold" style="font-size:12px;">سعر الوحدة (₪)</label>
+        <input type="number" class="form-control item-price" placeholder="0.00" min="0" step="any"
+               value="${d.unitPrice||''}" oninput="calculateRow(this.closest('.item-row'))">
+      </div>
+      <div class="col-6 col-md-1">
+        <label class="form-label fw-bold" style="font-size:12px;">خصم (₪)</label>
+        <input type="number" class="form-control item-discount" placeholder="0" min="0" step="any"
+               value="${d.discount||0}" oninput="calculateRow(this.closest('.item-row'))">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label fw-bold" style="font-size:12px;">الإجمالي (₪)</label>
+        <input type="number" class="form-control item-total fw-bold text-danger" readonly value="0">
+      </div>
+    </div>`;
+  document.getElementById('itemsContainer').appendChild(div);
+  calculateRow(div);
+}
+
+function removeRow(btn) {
+  const rows = document.querySelectorAll('.item-row');
+  if (rows.length <= 1) { alert('يجب أن يكون هناك صنف واحد على الأقل'); return; }
+  btn.closest('.item-row').remove();
+  calculateTotal();
+}
+
+function onUnitChange(sel) {
+  const row = sel.closest('.item-row');
+  const type = sel.value;
+  row.querySelector('.width-group').style.display = type === 'sqmeter' ? '' : 'none';
+  row.querySelector('.qty-label').textContent = type === 'piece' ? 'الكمية' : 'الطول (م)';
+  calculateRow(row);
+}
+
+function calculateRow(row) {
+  const type   = row.querySelector('.unit-type').value;
+  const length = parseFloat(row.querySelector('.item-length').value) || 0;
+  const widthEl = row.querySelector('.item-width');
+  const width  = widthEl ? (parseFloat(widthEl.value) || 0) : 0;
+  const price  = parseFloat(row.querySelector('.item-price').value) || 0;
+  const disc   = parseFloat(row.querySelector('.item-discount').value) || 0;
+  let qty = type === 'sqmeter' ? length * width : length;
+  let display = type === 'sqmeter' ? `${length}×${width}<br><small>${qty.toFixed(2)} م²</small>`
+              : type === 'meter'   ? `${qty.toFixed(2)} م`
+              : `${qty}`;
+  row.querySelector('.qty-computed').innerHTML = display;
+  row.querySelector('.item-qty-hidden').value  = qty;
+  row.querySelector('.item-total').value = Math.max(0, qty * price - disc).toFixed(2);
+  calculateTotal();
+}
+
+function calculateTotal() {
+  let subtotal = 0;
+  document.querySelectorAll('.item-total').forEach(i => subtotal += parseFloat(i.value) || 0);
+  const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+  const total = Math.max(0, subtotal - discount);
+  document.getElementById('subtotalDisplay').textContent = subtotal.toLocaleString('ar-EG');
+  document.getElementById('discountDisplay').textContent = discount.toLocaleString('ar-EG');
+  document.getElementById('totalDisplay').textContent    = total.toLocaleString('ar-EG');
+  document.getElementById('totalAmount').value  = total.toFixed(2);
+  document.getElementById('subtotalHidden').value = subtotal.toFixed(2);
+}
+
+function togglePayFields() {
+  const enabled = document.getElementById('payEnabled').checked;
+  document.getElementById('payFields').classList.toggle('show', enabled);
+  document.getElementById('paySection').classList.toggle('active', enabled);
+}
+
+function toggleCheckFields() {
+  const method = document.getElementById('payMethod').value;
+  document.getElementById('checkFields').classList.toggle('show', method === 'check');
+}
+
+document.getElementById('saleForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const items = [];
+  document.querySelectorAll('.item-row').forEach(row => {
+    const desc = row.querySelector('.item-desc').value.trim();
+    if (!desc) return;
+    const type   = row.querySelector('.unit-type').value;
+    const length = parseFloat(row.querySelector('.item-length').value) || 0;
+    const widthEl = row.querySelector('.item-width');
+    const width  = widthEl ? (parseFloat(widthEl.value) || 0) : 0;
+    const qty    = parseFloat(row.querySelector('.item-qty-hidden').value) || 0;
+    const price  = parseFloat(row.querySelector('.item-price').value) || 0;
+    const disc   = parseFloat(row.querySelector('.item-discount').value) || 0;
+    const total  = parseFloat(row.querySelector('.item-total').value) || 0;
+    items.push({ description: desc, quantityType: type, length, width, quantity: qty, unitPrice: price, discount: disc, total });
+  });
+  if (items.length === 0) { alert('أضف صنفاً واحداً على الأقل'); return; }
+  const hidden = document.createElement('input');
+  hidden.type = 'hidden'; hidden.name = 'items'; hidden.value = JSON.stringify(items);
+  this.appendChild(hidden);
+  this.submit();
+});
+
+// تهيئة
+calculateTotal();
+<% if(!(typeof sale!=='undefined' && sale && sale.items.length>0)) { %>
+addItemRow();
+<% } else { %>
+// إعادة حساب الأصناف الموجودة
+document.querySelectorAll('.item-row').forEach(row => calculateRow(row));
+<% } %>
+
+// حذف دفعة مبيعة بدون فورم متداخل
+function deleteSalePayment(url) {
+  if (!confirm('حذف هذه الدفعة نهائياً؟')) return;
+  fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    .then(function(r) { window.location.reload(); })
+    .catch(function(e) { alert('خطأ: ' + e.message); });
+}
+</script>
+
+<%- include('../partials/admin-footer') %>

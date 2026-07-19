@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ar-u-nu-latn" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تقرير أرباح <%= profit.invoiceNumber %></title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Cairo',sans-serif; font-size:11px; color:#0f172a; background:#fff; direction:rtl; }
+  .page { width:210mm; margin:0 auto; padding:10mm 12mm; }
+  .head { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #0f172a; padding-bottom:8px; margin-bottom:10px; }
+  .store-name { font-size:16px; font-weight:900; }
+  .report-title { font-size:18px; font-weight:900; color:#92400e; text-align:center; }
+  .report-sub { font-size:10px; color:#dc2626; font-weight:700; text-align:center; }
+  .doc-info { text-align:left; font-size:11px; line-height:1.7; }
+  .party-strip { background:#0f172a; color:#fff; padding:6px 12px; border-radius:6px; margin-bottom:10px; display:flex; gap:20px; flex-wrap:wrap; font-size:11px; }
+  .party-strip strong { color:#d4af37; }
+  table { width:100%; border-collapse:collapse; font-size:11px; margin-bottom:10px; }
+  thead th { background:#0f172a; color:#d4af37; padding:6px 8px; text-align:center; }
+  thead th.desc-col { text-align:right; }
+  tbody td { padding:6px 8px; border-bottom:1px solid #e2e8f0; text-align:center; }
+  tbody td.desc-col { text-align:right; font-weight:700; }
+  tbody tr:nth-child(even) td { background:#f8fafc; }
+  .totals-box { background:#0f172a; color:#fff; border-radius:8px; padding:10px 16px; display:flex; gap:20px; flex-wrap:wrap; margin-bottom:10px; justify-content:center; }
+  .t-item { display:flex; flex-direction:column; align-items:center; }
+  .t-lbl { font-size:10px; color:#94a3b8; }
+  .t-val { font-size:16px; font-weight:900; color:#d4af37; }
+  .footer-strip { border-top:1px dashed #e2e8f0; padding-top:6px; margin-top:8px; text-align:center; font-size:10px; color:#64748b; }
+  .confidential { text-align:center; font-size:9px; color:#dc2626; font-weight:700; margin-top:6px; }
+  .no-print { text-align:center; padding:12px; display:flex; gap:10px; justify-content:center; }
+  .btn-p { display:inline-flex; align-items:center; gap:6px; padding:8px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none; border:none; font-family:'Cairo',sans-serif; }
+  .btn-print { background:#1e293b; color:#fff; }
+  .btn-back  { background:#f1f5f9; color:#475569; }
+  @media print {
+    @page { size: A4; margin: 8mm 10mm; }
+    body { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .no-print { display:none !important; }
+    .page { padding:0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button class="btn-p btn-print" onclick="window.print()">🖨️ طباعة</button>
+  <a href="/admin/profits/view/<%= profit._id %>" class="btn-p btn-back">← رجوع</a>
+</div>
+
+<div class="page">
+
+  <div class="head">
+    <div>
+      <div class="store-name"><%= settings.storeName %></div>
+    </div>
+    <div>
+      <div class="report-title">تقرير الأرباح الداخلي</div>
+      <div class="report-sub">خاص بالمدير فقط — سري</div>
+    </div>
+    <div class="doc-info">
+      <div><strong>رقم الفاتورة:</strong> <%= profit.invoiceNumber %></div>
+      <div><strong>التاريخ:</strong> <%= new Date(profit.invoiceDate).toLocaleDateString('ar-EG') %></div>
+    </div>
+  </div>
+
+  <div class="party-strip">
+    <div><strong>العميل: </strong><%= profit.partyName %></div>
+    <% if(profit.notes) { %><div><strong>ملاحظات: </strong><%= profit.notes %></div><% } %>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="desc-col">الصنف</th>
+        <th>الكمية</th>
+        <th>سعر البيع</th>
+        <th>إجمالي البيع</th>
+        <th>تكلفة الوحدة</th>
+        <th>إجمالي التكلفة</th>
+        <th>الربح</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% profit.items.forEach(it => { %>
+        <tr>
+          <td class="desc-col"><%= it.description %></td>
+          <td>
+            <% if(it.quantityType === 'sqmeter') { %>
+              <%= it.length %>×<%= it.width %>=<%= it.quantity.toFixed(2) %>م²
+            <% } else if(it.quantityType === 'meter') { %>
+              <%= it.quantity.toFixed(2) %> م
+            <% } else { %>
+              <%= it.quantity %>
+            <% } %>
+          </td>
+          <td><%= it.unitPrice.toLocaleString('ar-EG') %> ₪</td>
+          <td style="font-weight:800;"><%= it.total.toLocaleString('ar-EG') %> ₪</td>
+          <td><%= it.unitCost.toLocaleString('ar-EG') %> ₪</td>
+          <td style="font-weight:700;"><%= it.totalCost.toLocaleString('ar-EG') %> ₪</td>
+          <td style="font-weight:800;"><%= it.itemProfit.toLocaleString('ar-EG') %> ₪</td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="totals-box">
+    <div class="t-item"><span class="t-lbl">إجمالي البيع</span><span class="t-val"><%= profit.totalSale.toLocaleString('ar-EG') %> ₪</span></div>
+    <div class="t-item"><span class="t-lbl">إجمالي التكلفة</span><span class="t-val"><%= profit.totalCost.toLocaleString('ar-EG') %> ₪</span></div>
+    <div class="t-item"><span class="t-lbl">صافي الربح</span><span class="t-val" style="font-size:20px;"><%= profit.netProfit.toLocaleString('ar-EG') %> ₪</span></div>
+    <div class="t-item"><span class="t-lbl">نسبة الربح</span><span class="t-val"><%= profit.profitMargin.toFixed(1) %>%</span></div>
+  </div>
+
+  <div class="confidential">هذا التقرير سري وخاص بالإدارة فقط — لا يجوز عرضه للعملاء</div>
+
+  <div class="footer-strip">تقرير داخلي • <%= settings.storeName %> • تاريخ الطباعة: <%= new Date().toLocaleDateString('ar-EG') %></div>
+
+</div>
+<script>
+(function(){
+  function fix(n){if(n.nodeType===3){n.nodeValue=n.nodeValue.replace(/[\u0660-\u0669]/g,function(d){return d.charCodeAt(0)-0x0660;});}else{n.childNodes.forEach(fix);}}
+  document.addEventListener('DOMContentLoaded',function(){fix(document.body);});
+})();
+</script>
+</body>
+</html>

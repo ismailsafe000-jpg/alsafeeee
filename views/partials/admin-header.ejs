@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ar-u-nu-latn" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title : 'لوحة التحكم' %> | <%= settings.storeName %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="/css/style.css" rel="stylesheet">
+  <script>
+    (function(){
+      var t = localStorage.getItem('adminTheme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <script>
+    (function(){
+      var primary  = '<%= settings.primaryColor  || "#4F46E5" %>';
+      var sidebar  = '<%= settings.sidebarColor  || "#1E1B4B" %>';
+      var font     = '<%= settings.fontFamily    || "Cairo"   %>';
+      var defTheme = '<%= settings.defaultTheme  || "light"   %>';
+      var root = document.documentElement;
+      if(/^#[0-9a-fA-F]{6}$/.test(primary)){
+        var r=parseInt(primary.slice(1,3),16), g=parseInt(primary.slice(3,5),16), b=parseInt(primary.slice(5,7),16);
+        root.style.setProperty('--primary', primary);
+        root.style.setProperty('--primary-hover','rgb('+Math.max(0,r-20)+','+Math.max(0,g-20)+','+Math.max(0,b-20)+')');
+        root.style.setProperty('--primary-light','rgba('+r+','+g+','+b+',0.10)');
+      }
+      if(/^#[0-9a-fA-F]{6}$/.test(sidebar)){
+        root.style.setProperty('--sidebar-bg', sidebar);
+        var sr=parseInt(sidebar.slice(1,3),16), sg=parseInt(sidebar.slice(3,5),16), sb=parseInt(sidebar.slice(5,7),16);
+        var lum=(0.299*sr+0.587*sg+0.114*sb)/255;
+        root.style.setProperty('--sidebar-text', lum>0.55?'#1e293b':'#ffffff');
+        root.style.setProperty('--sidebar-text-2', lum>0.55?'rgba(30,41,59,0.6)':'rgba(255,255,255,0.6)');
+      }
+      if(font) root.style.setProperty('--font',"'"+font+"',sans-serif");
+      if(!localStorage.getItem('adminTheme')) root.setAttribute('data-theme', defTheme);
+    })();
+  </script>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<div class="app-layout">
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Logo -->
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <% if (settings.storeLogo && settings.storeLogo !== '/images/default-logo.png') { %>
+          <img src="<%= settings.storeLogo %>" alt="logo">
+        <% } else { %>
+          <i class="fa-solid fa-couch"></i>
+        <% } %>
+      </div>
+      <div class="logo-text">
+        <%= settings.storeName %>
+        <span class="logo-sub">لوحة الإدارة</span>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="sidebar-nav">
+
+      <!-- الرئيسية -->
+      <div class="sidebar-label">الرئيسية</div>
+      <a href="/admin/dashboard" class="nav-item <%= currentPath && currentPath.includes('/dashboard') ? 'active' : '' %>">
+        <i class="fa-solid fa-chart-pie"></i><span>لوحة التحكم</span>
+      </a>
+
+      <!-- المبيعات -->
+      <div class="sidebar-label">المبيعات</div>
+      <a href="/admin/invoices" class="nav-item <%= currentPath && currentPath.includes('/invoices') ? 'active' : '' %>">
+        <i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span>
+      </a>
+      <a href="/admin/payments" class="nav-item <%= currentPath && currentPath.includes('/payments') ? 'active' : '' %>">
+        <i class="fa-solid fa-money-bill-transfer"></i><span>المدفوعات</span>
+      </a>
+      <a href="/admin/checks" class="nav-item <%= currentPath && currentPath.includes('/checks') ? 'active' : '' %>">
+        <i class="fa-solid fa-money-check-dollar"></i><span>الشيكات</span>
+      </a>
+      <a href="/admin/sales" class="nav-item <%= currentPath && currentPath.includes('/sales') ? 'active' : '' %>">
+        <i class="fa-solid fa-store"></i><span>مبيعات المعرض</span>
+      </a>
+      <a href="/admin/profits" class="nav-item <%= currentPath && currentPath.includes('/profits') ? 'active' : '' %>">
+        <i class="fa-solid fa-sack-dollar"></i><span>الأرباح</span>
+      </a>
+
+      <!-- الأطراف -->
+      <div class="sidebar-label">الأطراف</div>
+      <a href="/admin/customers" class="nav-item <%= currentPath && currentPath.includes('/customers') ? 'active' : '' %>">
+        <i class="fa-solid fa-users"></i><span>الزبائن</span>
+      </a>
+      <a href="/admin/dealers" class="nav-item <%= currentPath && currentPath.includes('/dealers') ? 'active' : '' %>">
+        <i class="fa-solid fa-handshake"></i><span>التجار</span>
+      </a>
+
+      <!-- الكتالوج -->
+      <div class="sidebar-label">الكتالوج</div>
+      <a href="/admin/catalogs" class="nav-item <%= currentPath && currentPath.includes('/catalogs') ? 'active' : '' %>">
+        <i class="fa-solid fa-book-open"></i><span>الكتالوج</span>
+      </a>
+      <a href="/admin/global-balances" class="nav-item <%= currentPath && currentPath.includes('/global-balances') ? 'active' : '' %>">
+        <i class="fa-solid fa-scale-balanced"></i><span>الأرصدة العامة</span>
+      </a>
+
+      <!-- التقارير -->
+      <div class="sidebar-label">التقارير</div>
+      <a href="/admin/customers" class="nav-item" id="navStatement" onclick="sessionStorage.setItem('openStatement','1')">
+        <i class="fa-solid fa-file-lines"></i><span>كشف الحساب</span>
+      </a>
+
+      <!-- الإعدادات -->
+      <div class="sidebar-label">الإعدادات</div>
+      <a href="/admin/settings" class="nav-item <%= currentPath && currentPath.includes('/settings') && !currentPath.includes('/whatsapp') ? 'active' : '' %>">
+        <i class="fa-solid fa-gear"></i><span>إعدادات النظام</span>
+      </a>
+      <a href="/admin/voucher-settings" class="nav-item <%= currentPath && currentPath.includes('/voucher-settings') ? 'active' : '' %>">
+        <i class="fa-solid fa-sliders"></i><span>إعدادات السندات</span>
+      </a>
+      <a href="/admin/whatsapp-settings" class="nav-item <%= currentPath && currentPath.includes('/whatsapp') ? 'active' : '' %>">
+        <i class="fa-brands fa-whatsapp" style="color:#25d366"></i><span>إشعارات WhatsApp</span>
+      </a>
+      <a href="/admin/backups" class="nav-item <%= currentPath && currentPath.includes('/backups') ? 'active' : '' %>">
+        <i class="fa-solid fa-database"></i><span>النسخ الاحتياطية</span>
+      </a>
+
+    </nav>
+
+    <!-- Footer -->
+    <div class="sidebar-footer">
+      <button class="sidebar-action" onclick="toggleTheme()" title="تبديل المظهر">
+        <i class="fa-solid fa-moon" id="themeIcon"></i>
+        <span class="theme-label">الوضع الداكن</span>
+      </button>
+      <a href="/logout" class="sidebar-action sidebar-logout"
+         onclick="return confirm('هل أنت متأكد من تسجيل الخروج؟')"
+         title="تسجيل الخروج">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        <span>تسجيل الخروج</span>
+      </a>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════ MAIN AREA ═══════════ -->
+  <div class="main-area">
+
+    <!-- Topbar -->
+    <header class="topbar">
+
+      <button class="topbar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="القائمة">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Search -->
+      <div class="topbar-search" id="topbarSearch">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="globalSearch" placeholder="ابحث عن فاتورة، زبون، تاجر..." autocomplete="off">
+        <span class="topbar-kbd">Ctrl K</span>
+      </div>
+
+      <div class="topbar-actions">
+        <!-- Notifications (placeholder) -->
+        <div class="topbar-notif-wrap">
+          <button class="topbar-btn" id="notifBtn" title="الإشعارات" onclick="toggleNotif()">
+            <i class="fa-solid fa-bell"></i>
+            <% const alertTotal = typeof invoiceStatuses !== 'undefined' ? (invoiceStatuses.unpaid + invoiceStatuses.partial) : 0; %>
+            <% if(alertTotal > 0){ %><span class="topbar-notif-badge"><%= alertTotal %></span><% } %>
+          </button>
+          <div class="topbar-notif-drop" id="notifDrop">
+            <div class="notif-header">الإشعارات</div>
+            <% if(typeof invoiceStatuses !== 'undefined' && invoiceStatuses.unpaid > 0){ %>
+            <a href="/admin/invoices" class="notif-item notif-danger">
+              <i class="fa-solid fa-file-invoice"></i>
+              <span><%= invoiceStatuses.unpaid %> فاتورة غير مدفوعة</span>
+            </a>
+            <% } %>
+            <% if(typeof invoiceStatuses !== 'undefined' && invoiceStatuses.partial > 0){ %>
+            <a href="/admin/invoices" class="notif-item notif-warning">
+              <i class="fa-solid fa-circle-half-stroke"></i>
+              <span><%= invoiceStatuses.partial %> فاتورة مدفوعة جزئياً</span>
+            </a>
+            <% } %>
+            <% if(typeof upcomingChecks !== 'undefined' && upcomingChecks.length > 0){ %>
+            <a href="/admin/checks" class="notif-item notif-info">
+              <i class="fa-solid fa-clock"></i>
+              <span><%= upcomingChecks.length %> شيك قادم</span>
+            </a>
+            <% } %>
+            <% if(alertTotal === 0 && (typeof upcomingChecks === 'undefined' || upcomingChecks.length === 0)){ %>
+            <div class="notif-empty">لا توجد إشعارات جديدة</div>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Dark mode -->
+        <button class="topbar-btn" onclick="toggleTheme()" title="تبديل المظهر">
+          <i class="fa-solid fa-moon" id="themeIcon2"></i>
+        </button>
+
+        <!-- Settings -->
+        <a href="/admin/settings" class="topbar-btn" title="الإعدادات">
+          <i class="fa-solid fa-gear"></i>
+        </a>
+
+        <!-- User -->
+        <div class="topbar-user">
+          <div class="topbar-avatar"><i class="fa-solid fa-user-tie"></i></div>
+          <div class="topbar-user-info">
+            <span class="topbar-user-name">مدير النظام</span>
+            <span class="topbar-user-role"><%= settings.storeName %></span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="content-area">
+      <%- include('messages') %>

@@ -1,0 +1,102 @@
+<%- include('../partials/admin-header') %>
+
+<style>
+.page-hdr{background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:16px;padding:22px 28px;color:white;margin-bottom:24px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;}
+.cust-name{font-size:20px;font-weight:800;color:#d4af37;display:flex;align-items:center;gap:8px;}
+.cust-meta{font-size:13px;color:#94a3b8;margin-top:4px;display:flex;gap:16px;flex-wrap:wrap;}
+.cust-meta span{display:flex;align-items:center;gap:5px;}
+.btn-new{background:linear-gradient(135deg,#d4af37,#c5a030);color:white;border:none;padding:11px 22px;border-radius:10px;font-weight:700;font-size:14px;font-family:'Cairo',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:7px;text-decoration:none;}
+.btn-new:hover{transform:scale(1.03);color:white;}
+.back-link{color:#94a3b8;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:5px;margin-bottom:6px;}
+.back-link:hover{color:#d4af37;}
+.empty-wrap{text-align:center;padding:60px 20px;background:var(--card-bg);border-radius:14px;border:1px solid var(--border-color);}
+.empty-wrap i{font-size:48px;color:rgba(212,175,55,.25);display:block;margin-bottom:14px;}
+.empty-wrap h5{color:var(--text-muted);}
+.visit-card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:14px;margin-bottom:14px;overflow:hidden;transition:.2s;}
+.visit-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.09);}
+.visit-card-head{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border-color);}
+.visit-num{background:linear-gradient(135deg,#d4af37,#c5a030);color:white;border-radius:10px;padding:6px 14px;font-size:15px;font-weight:800;}
+.visit-date{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:5px;}
+.visit-badges{display:flex;gap:6px;flex-wrap:wrap;margin-right:auto;}
+.vbadge{background:var(--card-bg);border:1px solid var(--border-color);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700;color:var(--text-muted);display:flex;align-items:center;gap:4px;}
+.visit-actions{padding:14px 20px;display:flex;flex-wrap:wrap;gap:8px;}
+.vbtn{padding:8px 14px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:13px;font-weight:600;text-decoration:none;border:1px solid;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:.15s;}
+.vbtn:hover{transform:translateY(-1px);}
+.vbtn-view{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.3);color:#3b82f6;}
+.vbtn-edit{background:rgba(212,175,55,.07);border-color:rgba(212,175,55,.3);color:#d4af37;}
+.vbtn-print{background:rgba(15,23,42,.05);border-color:var(--border-color);color:var(--text-muted);}
+.vbtn-copy{background:rgba(16,185,129,.07);border-color:rgba(16,185,129,.3);color:#10b981;}
+.vbtn-del{background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.3);color:#ef4444;}
+.visit-snapshot{padding:12px 20px;background:rgba(212,175,55,.03);display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);}
+.snap-item{display:flex;align-items:center;gap:4px;}
+.snap-item i{color:#d4af37;}
+</style>
+
+<a href="/admin/customers" class="back-link"><i class="fa-solid fa-arrow-right"></i> العودة للزبائن</a>
+
+<div class="page-hdr">
+  <div>
+    <div class="cust-name"><i class="fa-solid fa-user"></i> <%= customer.fullName %></div>
+    <div class="cust-meta">
+      <% if(customer.phone){%><span><i class="fa-solid fa-phone"></i> <%= customer.phone %></span><%}%>
+      <% if(customer.address){%><span><i class="fa-solid fa-map-marker-alt"></i> <%= customer.address %></span><%}%>
+      <span><i class="fa-solid fa-clipboard-list"></i> <%= visits.length %> زيارة</span>
+    </div>
+  </div>
+  <a href="/admin/customers/<%= customer._id %>/visits/new" class="btn-new">
+    <i class="fa-solid fa-plus"></i> زيارة جديدة
+  </a>
+</div>
+
+<% if(typeof success_msg !== 'undefined' && success_msg){ %>
+  <div class="alert alert-success mb-3"><i class="fa-solid fa-check-circle me-2"></i><%= success_msg %></div>
+<% } %>
+<% if(typeof error_msg !== 'undefined' && error_msg){ %>
+  <div class="alert alert-danger mb-3"><i class="fa-solid fa-exclamation-circle me-2"></i><%= error_msg %></div>
+<% } %>
+
+<% if(visits.length === 0) { %>
+  <div class="empty-wrap">
+    <i class="fa-solid fa-ruler-combined"></i>
+    <h5>لا توجد زيارات بعد</h5>
+    <p style="color:var(--text-muted);font-size:13px;margin-top:6px;">ابدأ بإضافة أول زيارة لهذا الزبون</p>
+    <a href="/admin/customers/<%= customer._id %>/visits/new" class="btn-new mt-3" style="display:inline-flex;">
+      <i class="fa-solid fa-plus"></i> إضافة زيارة
+    </a>
+  </div>
+<% } else { %>
+  <% visits.forEach(v => { %>
+  <div class="visit-card">
+    <div class="visit-card-head">
+      <div class="visit-num"><i class="fa-solid fa-star me-1" style="font-size:11px;"></i> زيارة #<%= v.visitNumber %></div>
+      <div class="visit-date"><i class="fa-solid fa-calendar"></i> <%= new Date(v.visitDate).toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric'}) %></div>
+      <div class="visit-badges">
+        <% if(v.sofas && v.sofas.length){ %><div class="vbadge"><i class="fa-solid fa-couch"></i> <%= v.sofas.length %> كنب</div><% } %>
+        <% if(v.qaadas && v.qaadas.length){ %><div class="vbadge"><i class="fa-solid fa-chair"></i> <%= v.qaadas.length %> قعدة</div><% } %>
+        <% if(v.rooms && v.rooms.length){ %><div class="vbadge"><i class="fa-solid fa-border-all"></i> <%= v.rooms.length %> غرفة</div><% } %>
+        <% if(v.windows && v.windows.length){ %><div class="vbadge"><i class="fa-solid fa-window-maximize"></i> <%= v.windows.length %> شباك</div><% } %>
+        <% if(v.photos && v.photos.length){ %><div class="vbadge"><i class="fa-solid fa-images"></i> <%= v.photos.length %> صور</div><% } %>
+      </div>
+    </div>
+    <% if(v.generalNotes){ %>
+    <div class="visit-snapshot">
+      <span class="snap-item"><i class="fa-solid fa-note-sticky"></i> <%= v.generalNotes.slice(0,100) %><%= v.generalNotes.length > 100 ? '...' : '' %></span>
+    </div>
+    <% } %>
+    <div class="visit-actions">
+      <a href="/admin/customers/<%= customer._id %>/visits/<%= v._id %>" class="vbtn vbtn-view"><i class="fa-solid fa-eye"></i> عرض</a>
+      <a href="/admin/customers/<%= customer._id %>/visits/<%= v._id %>/edit" class="vbtn vbtn-edit"><i class="fa-solid fa-pen"></i> تعديل</a>
+      <a href="/admin/customers/<%= customer._id %>/visits/<%= v._id %>/print" target="_blank" class="vbtn vbtn-print"><i class="fa-solid fa-print"></i> طباعة</a>
+      <form method="POST" action="/admin/customers/<%= customer._id %>/visits/<%= v._id %>/copy" style="display:inline;">
+        <button type="submit" class="vbtn vbtn-copy"><i class="fa-solid fa-copy"></i> نسخ</button>
+      </form>
+      <form method="POST" action="/admin/customers/<%= customer._id %>/visits/<%= v._id %>/delete" style="display:inline;"
+        onsubmit="return confirm('هل أنت متأكد من حذف زيارة رقم <%= v.visitNumber %>؟ لا يمكن التراجع عن هذه العملية.')">
+        <button type="submit" class="vbtn vbtn-del"><i class="fa-solid fa-trash"></i> حذف</button>
+      </form>
+    </div>
+  </div>
+  <% }) %>
+<% } %>
+
+<%- include('../partials/admin-footer') %>

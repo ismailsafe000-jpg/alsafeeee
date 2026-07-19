@@ -1,0 +1,80 @@
+<%- include('../partials/admin-header') %>
+
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+  <h2 class="section-title mb-0"><i class="fa-solid fa-handshake"></i> إدارة التجار</h2>
+  <a href="/admin/dealers/add" class="btn btn-gold"><i class="fa-solid fa-plus"></i> إضافة تاجر جديد</a>
+</div>
+
+<% if (dealers.length === 0) { %>
+  <div class="text-center py-5" style="background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border-color);">
+    <i class="fa-solid fa-handshake fa-3x mb-3" style="color: var(--primary-gold);"></i>
+    <h5 style="color: var(--text-muted);">لا يوجد تجار بعد</h5>
+    <a href="/admin/dealers/add" class="btn btn-gold mt-2"><i class="fa-solid fa-plus"></i> إضافة أول تاجر</a>
+  </div>
+<% } else { %>
+
+<!-- Desktop Table -->
+<div class="table-responsive-wrap d-none d-md-block">
+  <div class="table-luxury">
+    <table class="table table-luxury mb-0">
+      <thead>
+        <tr>
+          <th>الاسم الكامل</th>
+          <th>رقم الهاتف</th>
+          <th>اسم الشركة</th>
+          <th>إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% dealers.forEach(d => { %>
+          <tr>
+            <td class="fw-bold"><%= d.fullName %></td>
+            <td><%= d.phone || '-' %></td>
+            <td><%= d.company || '-' %></td>
+            <td>
+              <a href="/admin/statement/dealer/<%= d._id %>" class="btn btn-sm btn-info text-white me-1">
+                <i class="fa-solid fa-file-invoice-dollar"></i> كشف حساب
+              </a>
+              <a href="/admin/dealers/edit/<%= d._id %>" class="btn btn-sm btn-outline-gold me-1">
+                <i class="fa-solid fa-pen"></i>
+              </a>
+              <a href="/admin/dealers/delete/<%= d._id %>" class="btn btn-sm btn-danger"
+                 onclick="return confirm('هل أنت متأكد من حذف <%= d.fullName %>؟')">
+                <i class="fa-solid fa-trash"></i>
+              </a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Mobile Cards -->
+<div class="d-md-none">
+  <% dealers.forEach(d => { %>
+    <div class="invoice-card">
+      <div class="fw-bold mb-1" style="font-size:15px;"><%= d.fullName %></div>
+      <div class="mb-2" style="font-size:13px; color:var(--text-muted);">
+        <% if (d.phone) { %><i class="fa-solid fa-phone me-1"></i><%= d.phone %><% } %>
+        <% if (d.company) { %>&nbsp;&nbsp;<i class="fa-solid fa-building me-1"></i><%= d.company %><% } %>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="/admin/statement/dealer/<%= d._id %>" class="btn btn-sm btn-info text-white">
+          <i class="fa-solid fa-file-invoice-dollar"></i> كشف حساب
+        </a>
+        <a href="/admin/dealers/edit/<%= d._id %>" class="btn btn-sm btn-outline-gold">
+          <i class="fa-solid fa-pen"></i> تعديل
+        </a>
+        <a href="/admin/dealers/delete/<%= d._id %>" class="btn btn-sm btn-danger"
+           onclick="return confirm('هل أنت متأكد من حذف <%= d.fullName %>؟')">
+          <i class="fa-solid fa-trash"></i>
+        </a>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<% } %>
+
+<%- include('../partials/admin-footer') %>

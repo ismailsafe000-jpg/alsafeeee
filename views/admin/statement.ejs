@@ -1,0 +1,839 @@
+<%- include('../partials/admin-header') %>
+
+<style>
+  /* ===== الأنماط العامة ===== */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  
+  .section-title i {
+    color: #b8860b;
+    margin-left: 8px;
+  }
+
+  /* ===== ترويسة الكشف (مضغوطة واحترافية) ===== */
+  .stmt-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    background: #ffffff;
+    border-bottom: 2px solid #0f172a;
+    padding: 4px 12px;
+    margin-bottom: 4px;
+    gap: 8px;
+    min-height: 60px;
+  }
+
+  /* الجهة اليمنى - معلومات المعرض */
+  .header-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+  }
+
+  .header-logo {
+    flex-shrink: 0;
+  }
+
+  .header-logo img {
+    max-height: 45px;
+    width: auto;
+    object-fit: contain;
+  }
+
+  .store-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+  }
+
+  .store-name {
+    font-size: 14px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+  }
+
+  .store-details {
+    font-size: 8px;
+    color: #334155;
+    line-height: 1.3;
+  }
+
+  .store-details i {
+    color: #0f172a;
+    width: 12px;
+    font-size: 8px;
+  }
+
+  /* الجهة اليسرى - معلومات المستند */
+  .header-left {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 1px;
+    padding: 2px 0;
+    border-right: 1px solid #e2e8f0;
+    padding-right: 10px;
+    min-width: 160px;
+  }
+
+  .doc-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+  }
+
+  .doc-info {
+    font-size: 8px;
+    color: #334155;
+    line-height: 1.3;
+    text-align: left;
+  }
+
+  .doc-info strong {
+    color: #0f172a;
+    font-weight: 700;
+  }
+
+  /* ===== معلومات الطرف ===== */
+  .party-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    padding: 4px 12px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 4px;
+    font-size: 10px;
+    align-items: center;
+  }
+
+  .pi {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .pi i {
+    color: #0f172a;
+    font-size: 10px;
+    width: 14px;
+  }
+
+  .pi .label {
+    color: #64748b;
+    font-weight: 400;
+  }
+
+  .pi .value {
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  /* ===== جدول الحركات (مضغوط) ===== */
+  .stmt-wrap {
+    padding: 4px 12px 8px;
+    overflow-x: auto;
+  }
+
+  .stmt-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .stmt-table thead th {
+    background: #0f172a;
+    color: #ffffff;
+    padding: 4px 6px;
+    text-align: center;
+    font-size: 8px;
+    font-weight: 700;
+    border: 1px solid #1e293b;
+  }
+
+  .stmt-table thead th:first-child {
+    border-radius: 0;
+  }
+
+  .stmt-table tbody td {
+    padding: 3px 6px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+    font-size: 9px;
+  }
+
+  .stmt-table tbody tr:nth-child(even) {
+    background: #fafbfc;
+  }
+
+  .desc-cell {
+    text-align: right !important;
+    font-weight: 600;
+  }
+
+  .desc-cell .ch-note {
+    font-size: 7px;
+    color: #64748b;
+    display: block;
+    margin-top: 1px;
+  }
+
+  /* ===== ألوان المدين والدائن ===== */
+  .debit-color {
+    color: #dc2626 !important;
+    font-weight: 700;
+  }
+
+  .credit-color {
+    color: #16a34a !important;
+    font-weight: 700;
+  }
+
+  /* رصيد موجب (المطلوب دفعه) */
+  .balance-positive {
+    color: #dc2626 !important;
+    font-weight: 700;
+  }
+
+  /* رصيد سالب (لصالحه) */
+  .balance-negative {
+    color: #2563eb !important;
+    font-weight: 700;
+  }
+
+  .balance-zero {
+    color: #16a34a !important;
+    font-weight: 700;
+  }
+
+  /* ===== الملخص (مضغوط) ===== */
+  .sum-section {
+    margin: 4px 12px 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 6px 12px;
+  }
+
+  .sum-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .sum-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 5px 8px;
+    text-align: center;
+  }
+
+  .sum-box .lbl {
+    font-size: 7px;
+    color: #64748b;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .sum-box .val {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+  }
+
+  .sum-box .sub {
+    font-size: 7px;
+    color: #94a3b8;
+    margin-top: 1px;
+  }
+
+  /* ===== تفاصيل الأصناف ===== */
+  .items-detail {
+    font-size: 8px;
+    color: #64748b;
+    margin-top: 2px;
+    white-space: pre-wrap;
+    background: #f8fafc;
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+    text-align: right;
+    max-width: 350px;
+    display: inline-block;
+  }
+
+  /* ===== زر الطباعة ===== */
+  .no-print {
+    margin-bottom: 6px;
+  }
+
+  /* ===== تنسيق الطباعة ===== */
+  @media print {
+    body {
+      background: #ffffff !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    .no-print {
+      display: none !important;
+    }
+
+    .container.py-4 {
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+
+    .stmt-head {
+      border-bottom: 2px solid #000000 !important;
+      padding: 4px 8px !important;
+      background: #ffffff !important;
+    }
+
+    .store-name {
+      color: #000000 !important;
+    }
+
+    .store-details {
+      color: #333333 !important;
+    }
+
+    .store-details i {
+      color: #000000 !important;
+    }
+
+    .header-left {
+      border-right: 1px solid #999999 !important;
+    }
+
+    .doc-title {
+      color: #000000 !important;
+    }
+
+    .doc-info {
+      color: #333333 !important;
+    }
+
+    .doc-info strong {
+      color: #000000 !important;
+    }
+
+    .party-strip {
+      background: #f5f5f5 !important;
+      border-bottom: 1px solid #999999 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    .pi .value {
+      color: #000000 !important;
+    }
+
+    .stmt-table {
+      border: 1px solid #999999 !important;
+    }
+
+    .stmt-table thead th {
+      background: #e5e5e5 !important;
+      color: #000000 !important;
+      border: 1px solid #999999 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    .stmt-table tbody td {
+      border: 1px solid #cccccc !important;
+      color: #000000 !important;
+    }
+
+    .debit-color, .credit-color, .balance-positive, .balance-negative, .balance-zero {
+      color: #000000 !important;
+    }
+
+    .sum-section {
+      background: #f5f5f5 !important;
+      border: 1px solid #999999 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    .sum-box {
+      background: #ffffff !important;
+      border: 1px solid #999999 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    .sum-box .lbl {
+      color: #555555 !important;
+    }
+
+    .sum-box .val {
+      color: #000000 !important;
+    }
+
+    .sum-box .sub {
+      color: #777777 !important;
+    }
+
+    .items-detail {
+      background: #f5f5f5 !important;
+      border: 1px solid #cccccc !important;
+      color: #000000 !important;
+    }
+
+    .desc-cell .ch-note {
+      color: #555555 !important;
+    }
+
+    @page {
+      size: <%= settings.statementPrintSize || 'A4' %>;
+      margin: <%= (settings.printMarginTop  || 6)  %>mm <%= (settings.printMarginSide || 8) %>mm;
+    }
+  }
+
+  /* ===== استجابة للشاشات الصغيرة ===== */
+  @media (max-width: 600px) {
+    .stmt-head {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+      padding: 6px 10px;
+    }
+
+    .header-left {
+      border-right: none;
+      border-top: 1px solid #e2e8f0;
+      padding-right: 0;
+      padding-top: 4px;
+      align-items: flex-start;
+      min-width: unset;
+    }
+
+    .header-right {
+      flex-wrap: wrap;
+    }
+
+    .store-name {
+      font-size: 13px;
+    }
+
+    .doc-title {
+      font-size: 12px;
+    }
+
+    .sum-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .party-strip {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      padding: 6px 10px;
+    }
+  }
+
+  /* ===== أنماط إضافية ===== */
+  .btn-gold {
+    background: #b8860b;
+    color: #fff;
+    border: none;
+  }
+  .btn-gold:hover {
+    background: #9a7209;
+    color: #fff;
+  }
+  .btn-outline-gold {
+    border: 1px solid #b8860b;
+    color: #b8860b;
+  }
+  .btn-outline-gold:hover {
+    background: #b8860b;
+    color: #fff;
+  }
+  .text-gold {
+    color: #b8860b;
+  }
+  .stmt-card {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+</style>
+
+<!-- ===== رأس الصفحة - مع no-print ===== -->
+<div class="no-print d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+  <h2 class="section-title mb-0">
+    <i class="fa-solid fa-book-open"></i>
+    كشف حساب: <span style="color:#b8860b;"><%= party.fullName %></span>
+    <% if (type === 'dealer') { %>
+      <span style="font-size:12px; color:#64748b; font-weight:400;">(تاجر - دائن)</span>
+    <% } else { %>
+      <span style="font-size:12px; color:#64748b; font-weight:400;">(زبون - مدين)</span>
+    <% } %>
+  </h2>
+  <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-gold btn-sm" data-bs-toggle="modal" data-bs-target="#addItemModal">
+      <i class="fa-solid fa-plus"></i> إضافة صنف / حركة
+    </button>
+    <button class="btn btn-primary btn-sm" onclick="window.print()">
+      <i class="fa-solid fa-print"></i> طباعة / PDF
+    </button>
+    <% if (type === 'customer') { %>
+      <form method="POST" action="/admin/whatsapp-send-customer-statement/<%= party._id %>" style="display:inline;">
+        <button class="btn btn-outline-success btn-sm">
+          <i class="fa-brands fa-whatsapp"></i> إرسال للزبون
+        </button>
+      </form>
+      <form method="POST" action="/admin/whatsapp-send-statement-to-manager/<%= party._id %>" style="display:inline;">
+        <button class="btn btn-outline-info btn-sm">
+          <i class="fa-brands fa-whatsapp"></i> إرسال للمدير
+        </button>
+      </form>
+    <% } %>
+    <a href="/admin/<%= type %>s" class="btn btn-outline-secondary btn-sm">
+      <i class="fa-solid fa-arrow-right"></i> رجوع
+    </a>
+  </div>
+</div>
+
+<!-- ===== الكشف الاحترافي (مضغوط) ===== -->
+<div class="stmt-card">
+
+  <!-- ===== الترويسة الجديدة ===== -->
+  <div class="stmt-head">
+    <!-- الجهة اليمنى: معلومات المعرض -->
+    <div class="header-right">
+      <% if (settings.storeLogo) { %>
+        <div class="header-logo">
+          <img src="<%= settings.storeLogo %>" alt="شعار المعرض">
+        </div>
+      <% } %>
+      <div class="store-info">
+        <div class="store-name"><%= settings.storeName %></div>
+        <div class="store-details">
+          <% if (settings.storeAddress) { %>
+            <i class="fa-solid fa-location-dot"></i> <%= settings.storeAddress %>
+          <% } %>
+          <% if (settings.storePhone) { %>
+            <i class="fa-solid fa-phone"></i> <%= settings.storePhone %>
+          <% } %>
+          <% if (settings.storeEmail) { %>
+            <i class="fa-solid fa-envelope"></i> <%= settings.storeEmail %>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- الجهة اليسرى: معلومات المستند -->
+    <div class="header-left">
+      <div class="doc-title">كشف حساب تفصيلي</div>
+      <div class="doc-info">
+        <strong>التاريخ:</strong> <%= new Date().toLocaleDateString('ar-EG', {year:'numeric', month:'2-digit', day:'2-digit'}) %><br>
+        <strong>الحركات:</strong> <%= transactions.length %>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== معلومات الطرف ===== -->
+  <div class="party-strip">
+    <div class="pi">
+      <i class="fa-solid fa-<%= type === 'customer' ? 'user' : 'user-tie' %>"></i>
+      <span class="value"><%= party.fullName %></span>
+    </div>
+    <% if (party.phone) { %>
+      <div class="pi">
+        <i class="fa-solid fa-phone"></i>
+        <span class="value"><%= party.phone %></span>
+      </div>
+    <% } %>
+    <% if (party.address) { %>
+      <div class="pi">
+        <i class="fa-solid fa-location-dot"></i>
+        <span class="value"><%= party.address %></span>
+      </div>
+    <% } %>
+    <!-- عرض نوع الحساب -->
+    <div class="pi" style="background:<%= type === 'dealer' ? '#fef3c7' : '#dbeafe' %>; padding:2px 12px; border-radius:12px;">
+      <span class="value" style="font-size:9px;">
+        <% if (type === 'dealer') { %>
+          🔄 تاجر (دائن)
+        <% } else { %>
+          👤 زبون (مدين)
+        <% } %>
+      </span>
+    </div>
+  </div>
+
+  <!-- ===== جدول الحركات ===== -->
+  <div class="stmt-wrap">
+    <table class="stmt-table">
+      <thead>
+        <tr>
+          <th style="width:4%;">#</th>
+          <th style="width:12%;">التاريخ</th>
+          <th style="width:30%;">البيان / الصنف</th>
+          <th style="width:8%;">المرجع</th>
+          <th style="width:12%;">مدين (عليك)</th>
+          <th style="width:12%;">دائن (لك)</th>
+          <th style="width:14%;">الرصيد</th>
+          <th style="width:10%;" class="no-print">إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (transactions.length === 0) { %>
+          <tr>
+            <td colspan="8" class="text-center py-3" style="color:#94a3b8; font-size:10px;">
+              لا توجد حركات بعد
+            </td>
+          </tr>
+        <% } else { %>
+          <% transactions.forEach((t, idx) => { %>
+            <tr>
+              <td style="color:#94a3b8;"><%= idx+1 %></td>
+              <td style="white-space:nowrap;">
+                <%= t.date.toLocaleDateString('ar-EG', {year:'numeric',month:'2-digit',day:'2-digit'}) %>
+              </td>
+              <td class="desc-cell">
+                <% if(t.invoice){ %>
+                  <span style="color:#b8860b; font-size:8px; font-weight:800; display:block; margin-bottom:1px;">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    فاتورة: <%= t.invoice.invoiceNumber %>
+                  </span>
+                <% } %>
+                <%= t.desc.split(' — ')[0] %>
+                
+                <% if(t.itemsDetails && t.itemsDetails.length > 0){ %>
+                  <div class="items-detail">
+                    <i class="fa-solid fa-list me-1" style="color:#b8860b;"></i>
+                    <%= t.itemsDetails %>
+                  </div>
+                <% } %>
+                
+                <% if (t.cheque) { %>
+                  <span class="ch-note"><i class="fa-solid fa-money-check"></i> <%= t.cheque %></span>
+                <% } %>
+              </td>
+              <td style="font-size:8px; color:#64748b;">
+                <% if(t.invoice){ %>
+                  <a href="/admin/invoices/view/<%= t.invoice._id %>" class="no-print"
+                     style="color:#3b82f6; font-size:8px; font-weight:700; text-decoration:none;">
+                    فتح
+                  </a>
+                <% } else { %>
+                  <%= t.refNo %>
+                <% } %>
+              </td>
+              <td class="debit-color">
+                <%= t.debit > 0 ? t.debit.toLocaleString('ar-EG') : '-' %>
+              </td>
+              <td class="credit-color">
+                <%= t.credit > 0 ? t.credit.toLocaleString('ar-EG') : '-' %>
+              </td>
+              <td class="<%= t.balance > 0 ? 'balance-positive' : (t.balance < 0 ? 'balance-negative' : 'balance-zero') %>">
+                <%= t.balance.toLocaleString('ar-EG') %>
+              </td>
+              <td class="no-print" style="white-space:nowrap;">
+                <% if (!t.invoice) { %>
+                  <button type="button" class="btn btn-sm btn-outline-primary edit-tx-btn" style="padding:1px 6px; font-size:8px;"
+                          data-id="<%= t._id %>"
+                          data-desc="<%= t.desc.replace(/"/g, '&quot;') %>"
+                          data-amount="<%= t.debit > 0 ? t.debit : t.credit %>"
+                          data-date="<%= t.date.toISOString().slice(0,10) %>"
+                          data-refno="<%= t.refNo === '-' ? '' : t.refNo %>">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                <% } %>
+                <form action="/admin/statement/delete/<%= t._id %>" method="POST"
+                      onsubmit="return confirm('حذف هذه الحركة نهائياً؟')"
+                      style="display:inline;">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" style="padding:1px 6px; font-size:8px;">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== الملخص المالي ===== -->
+  <div class="sum-section">
+    <div class="sum-grid">
+      <div class="sum-box">
+        <div class="lbl">إجمالي المشتريات (مدين)</div>
+        <div class="val" style="color:#dc2626;"><%= totals.totalDebit.toLocaleString('ar-EG') %> ₪</div>
+        <div class="sub">إجمالي ما اشتريته منه</div>
+      </div>
+      <div class="sum-box">
+        <div class="lbl">إجمالي المدفوعات (دائن)</div>
+        <div class="val" style="color:#16a34a;"><%= totals.totalCredit.toLocaleString('ar-EG') %> ₪</div>
+        <div class="sub">إجمالي ما دفعته له</div>
+      </div>
+      <div class="sum-box" style="grid-column: span 2;">
+        <div class="lbl">الرصيد النهائي</div>
+        <div class="val" style="color:<%= totals.finalBalance > 0 ? '#dc2626' : (totals.finalBalance < 0 ? '#2563eb' : '#16a34a') %>;">
+          <%= totals.finalBalance.toLocaleString('ar-EG') %> ₪
+        </div>
+        <div class="sub">
+          <% if (totals.finalBalance > 0) { %>
+            🔴 <%= type === 'dealer' ? 'مستحق عليك للتاجر' : 'مستحق على الزبون' %>
+          <% } else if (totals.finalBalance < 0) { %>
+            🟢 <%= type === 'dealer' ? 'رصيد لصالح التاجر (له عندك)' : 'رصيد للزبون (عندك)' %>
+          <% } else { %>
+            ✅ الحساب مسوّى
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== مودال إضافة حركة ===== -->
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-plus-circle text-gold"></i> إضافة حركة جديدة</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/admin/statement/add/<%= party._id %>" method="POST">
+        <input type="hidden" name="type" value="<%= type %>">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">البيان</label>
+            <input type="text" name="desc" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">المبلغ</label>
+            <input type="number" name="amount" class="form-control" step="0.01" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">النوع</label>
+            <select name="type" class="form-select">
+              <option value="debit">مدين (عليك)</option>
+              <option value="credit">دائن (لك)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">التاريخ</label>
+            <input type="date" name="date" class="form-control" value="<%= new Date().toISOString().slice(0,10) %>">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">المرجع</label>
+            <input type="text" name="refNo" class="form-control" placeholder="رقم الفاتورة أو الإذن">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-gold">إضافة الحركة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===== مودال تعديل الحركة ===== -->
+<div class="modal fade" id="editTxModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-pen text-gold"></i> تعديل الحركة</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editTxForm" method="POST">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">البيان</label>
+            <input type="text" name="desc" id="edit_desc" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">المبلغ</label>
+            <input type="number" name="amount" id="edit_amount" class="form-control" step="0.01" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">التاريخ</label>
+            <input type="date" name="date" id="edit_date" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">المرجع</label>
+            <input type="text" name="refNo" id="edit_refno" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-gold">تحديث الحركة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Bootstrap JavaScript - مهم جداً لتشغيل الأزرار والمودالات ===== -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- ===== سكريبتات تشغيل المودالات والأزرار ===== -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // تفعيل أزرار التعديل
+    document.querySelectorAll('.edit-tx-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var id = this.dataset.id;
+        var desc = this.dataset.desc;
+        var amount = this.dataset.amount;
+        var date = this.dataset.date;
+        var refno = this.dataset.refno;
+
+        var form = document.getElementById('editTxForm');
+        if (form) {
+          form.action = '/admin/statement/update/' + id;
+          document.getElementById('edit_desc').value = desc || '';
+          document.getElementById('edit_amount').value = amount || '';
+          document.getElementById('edit_date').value = date || '';
+          document.getElementById('edit_refno').value = refno || '';
+          
+          // فتح المودال
+          var modal = new bootstrap.Modal(document.getElementById('editTxModal'));
+          modal.show();
+        }
+      });
+    });
+  });
+</script>
+
+<%- include('../partials/admin-footer') %>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ar-u-nu-latn" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سند <%= payment.voucherNumber || payment._id %></title>
+<link href="https://fonts.googleapis.com/css2?family=<%= (settings.voucherFont||'Cairo').replace(/ /g,'+') %>:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<%
+const s = settings;
+const isReceipt = !payment.voucherType || payment.voucherType === 'receipt';
+const paperSize = s.voucherPaperSize || 'A4';
+const isThermal = paperSize === 'R80' || paperSize === 'R58';
+const pageW = paperSize==='A4' ? '210mm' : paperSize==='A5' ? '148mm' : paperSize==='R80' ? '80mm' : '58mm';
+const fontSize = s.voucherFontSize || 12;
+const titleSize = s.voucherTitleSize || 18;
+const logoH = s.voucherLogoSize || 70;
+const currSym = payment.currency || s.currency || '₪';
+const pDate = new Date(payment.paymentDate);
+%>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: '<%= s.voucherFont||"Cairo" %>', sans-serif;
+    font-size: <%= fontSize %>px;
+    color: <%= s.voucherTextColor || '#1e293b' %>;
+    background: #fff;
+    direction: rtl;
+  }
+  .page {
+    width: <%= pageW %>;
+    margin: 0 auto;
+    <% if(!isThermal) { %>padding: 12mm 14mm;<% } else { %>padding: 4mm;<% } %>
+  }
+  .voucher-header {
+    background: <%= s.voucherHeaderColor || '#1e293b' %>;
+    color: #fff;
+    padding: <% if(isThermal){%>8px 10px<%}else{%>16px 20px<%}%>;
+    border-radius: <% if(isThermal){%>6px 6px 0 0<%}else{%>12px 12px 0 0<%}%>;
+  }
+  .voucher-body {
+    border: 1px solid <%= s.voucherBorderColor||'#dee2e6' %>;
+    border-top: none;
+    padding: <% if(isThermal){%>8px 10px<%}else{%>14px 18px<%}%>;
+  }
+  .voucher-footer {
+    background: <%= s.voucherFooterColor||'#f1f5f9' %>;
+    border: 1px solid <%= s.voucherBorderColor||'#dee2e6' %>;
+    border-top: none;
+    border-radius: <% if(isThermal){%>0 0 6px 6px<%}else{%>0 0 12px 12px<%}%>;
+    padding: <% if(isThermal){%>6px 10px<%}else{%>10px 18px<%}%>;
+  }
+  .store-name { font-size: <%= titleSize %>px; font-weight: 900; }
+  .store-sub { font-size: <%= Math.max(10,fontSize-1) %>px; opacity: 0.8; margin-top: 3px; }
+  .voucher-num { font-size: <%= titleSize+4 %>px; font-weight: 900; font-family: monospace; letter-spacing: 1px; }
+  .amount-box {
+    background: <%= isReceipt ? '#d1fae5' : '#fee2e2' %>;
+    border: 2px solid <%= isReceipt ? '#6ee7b7' : '#fca5a5' %>;
+    border-radius: 10px; text-align: center;
+    padding: <% if(isThermal){%>8px 6px<%}else{%>14px 10px<%}%>;
+    margin: 10px 0;
+  }
+  .amount-num {
+    font-size: <%= isThermal ? fontSize+4 : fontSize+14 %>px;
+    font-weight: 900;
+    color: <%= isReceipt ? '#065f46' : '#991b1b' %>;
+    direction: ltr;
+  }
+  .amount-words { font-size: <%= Math.max(9,fontSize-2) %>px; color: #64748b; margin-top: 4px; }
+  .info-table { width:100%; border-collapse: collapse; margin: 8px 0; }
+  .info-table tr td { padding: 5px 4px; font-size: <%= fontSize-1 %>px; }
+  .info-table tr td:first-child { color: #64748b; font-weight:600; width:40%; }
+  .info-table tr { border-bottom: 1px solid <%= s.voucherBorderColor||'#dee2e6' %>; }
+  .info-table tr:last-child { border-bottom: none; }
+  .sig-section { margin-top: 14px; }
+  .sig-box {
+    border: 1px dashed <%= s.voucherBorderColor||'#dee2e6' %>;
+    border-radius: 8px; text-align: center;
+    padding: 18px 8px 8px; min-height: 60px;
+    font-size: <%= Math.max(9,fontSize-2) %>px; color:#94a3b8;
+  }
+  .sig-row { display: flex; gap: 8px; }
+  .sig-row .sig-box { flex: 1; }
+  .divider { border: none; border-top: 1px dashed <%= s.voucherBorderColor||'#dee2e6' %>; margin: 8px 0; }
+  .hdr-row { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; }
+  .badge-type {
+    display:inline-block; padding:2px 12px; border-radius:20px; font-size:11px; font-weight:700;
+    background: rgba(255,255,255,0.2); color:#fff; margin-top:4px;
+  }
+  @media print {
+    @page {
+      size: <%= pageW %> auto;
+      margin: 0;
+    }
+    body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .no-print { display: none !important; }
+    .page { margin:0; padding: <% if(isThermal){%>3mm<%}else{%>8mm<%}%>; }
+  }
+  .no-print {
+    text-align: center; margin-bottom: 16px;
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+  }
+  .btn-p {
+    display: inline-flex; align-items:center; gap:6px;
+    padding: 8px 20px; border-radius: 10px; font-size:13px; font-weight:700;
+    cursor:pointer; text-decoration:none; border:none;
+    font-family: '<%= s.voucherFont||"Cairo" %>', sans-serif;
+  }
+  .btn-print { background:#1e293b; color:#fff; }
+  .btn-close-p { background:#f1f5f9; color:#475569; }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button class="btn-p btn-print" onclick="window.print()">
+    🖨️ طباعة السند
+  </button>
+  <a href="/admin/payments/view/<%= payment._id %>" class="btn-p btn-close-p">
+    ← رجوع للعرض
+  </a>
+  <a href="/admin/payments" class="btn-p btn-close-p">
+    القائمة
+  </a>
+</div>
+
+<div class="page">
+  <div class="voucher-header">
+    <div class="hdr-row">
+      <div>
+        <% if(s.voucherShowLogo !== false && s.storeLogo && s.storeLogo !== '/images/default-logo.png') { %>
+          <img src="<%= s.storeLogo %>" style="height:<%= logoH %>px;object-fit:contain;border-radius:6px;margin-bottom:6px;" alt="شعار">
+          <% if(!isThermal) { %><br><% } %>
+        <% } %>
+        <% if(s.voucherShowStoreName !== false) { %>
+          <div class="store-name"><%= s.storeName %></div>
+        <% } %>
+        <% if(s.voucherShowAddress !== false && s.storeAddress) { %>
+          <div class="store-sub"><%= s.storeAddress %><% if(s.storeCity) { %>, <%= s.storeCity %><% } %></div>
+        <% } %>
+        <div class="store-sub">
+          <% if(s.voucherShowPhone !== false && s.storePhone) { %><%= s.storePhone %><% } %>
+          <% if(s.voucherShowMobile !== false && s.storeMobile) { %> &nbsp;|&nbsp; <%= s.storeMobile %><% } %>
+          <% if(s.voucherShowEmail !== false && s.storeEmail) { %> &nbsp;|&nbsp; <%= s.storeEmail %><% } %>
+          <% if(s.voucherShowWebsite !== false && s.storeWebsite) { %><br><%= s.storeWebsite %><% } %>
+        </div>
+      </div>
+      <div style="text-align:left;">
+        <div class="store-sub" style="opacity:0.75;"><%= isReceipt ? 'سند قبض' : 'سند صرف' %></div>
+        <div class="voucher-num"><%= payment.voucherNumber || '—' %></div>
+        <% if(s.voucherShowDate !== false) { %>
+          <div class="store-sub">
+            <%= pDate.toLocaleDateString('ar-EG', {year:'numeric',month:'2-digit',day:'2-digit'}) %>
+            <% if(s.voucherShowTime !== false) { %>
+              — <%= pDate.toLocaleTimeString('ar-EG', {hour:'2-digit',minute:'2-digit'}) %>
+            <% } %>
+          </div>
+        <% } %>
+        <div>
+          <span class="badge-type">
+            <%= payment.type === 'customer' ? 'زبون' : 'تاجر' %>
+          </span>
+        </div>
+      </div>
+    </div>
+    <% if(s.voucherHeaderText) { %>
+      <div style="text-align:center;font-size:12px;opacity:0.8;margin-top:8px;"><%= s.voucherHeaderText %></div>
+    <% } %>
+  </div>
+
+  <div class="voucher-body">
+    <!-- مبلغ السند -->
+    <div class="amount-box">
+      <div style="font-size:<%= fontSize %>px;color:#374151;margin-bottom:4px;">
+        <%= isReceipt ? 'استلمنا من السيد/ة' : 'صرفنا للسيد/ة' %>:
+        <strong> <%= payment.partyName %></strong>
+      </div>
+      <div class="amount-num"><%= payment.amount.toLocaleString('ar-EG') %> <%= currSym %></div>
+      <% if(s.voucherShowAmountInWords !== false) { %>
+        <div class="amount-words">فقط <%= amountWords %> لا غير</div>
+      <% } %>
+    </div>
+
+    <!-- جدول التفاصيل -->
+    <table class="info-table">
+      <% if(s.voucherShowPaymentMethod !== false) { %>
+      <tr>
+        <td>طريقة الدفع</td>
+        <td>
+          <% if(payment.paymentMethod==='cash') { %>نقداً
+          <% } else if(payment.paymentMethod==='bank_transfer') { %>تحويل بنكي
+          <% } else if(payment.paymentMethod==='check') { %>شيك
+          <% } else if(payment.paymentMethod==='card') { %>بطاقة
+          <% } else { %><%= payment.paymentMethod %><% } %>
+        </td>
+      </tr>
+      <% } %>
+      <% if(s.voucherShowBank !== false && payment.bankName && (payment.paymentMethod==='check'||payment.paymentMethod==='bank_transfer')) { %>
+      <tr><td>البنك</td><td><%= payment.bankName %></td></tr>
+      <% } %>
+      <% if(s.voucherShowChequeNumber !== false && payment.paymentMethod==='check') { %>
+      <% if(payment.chequeNumber) { %><tr><td>رقم الشيك</td><td><%= payment.chequeNumber %></td></tr><% } %>
+      <% if(payment.chequeDueDate) { %><tr><td>تاريخ استحقاق الشيك</td><td><%= new Date(payment.chequeDueDate).toLocaleDateString('ar-EG') %></td></tr><% } %>
+      <% } %>
+      <% if(s.voucherShowInvoiceRef !== false && payment.invoiceId) { %>
+      <tr><td>الفاتورة المرتبطة</td><td><%= payment.invoiceId.invoiceNumber || payment.invoiceId %></td></tr>
+      <% } %>
+      <% if(s.voucherShowDescription !== false && payment.description) { %>
+      <tr><td>البيان</td><td><%= payment.description %></td></tr>
+      <% } %>
+      <% if(s.voucherShowNotes !== false && payment.notes) { %>
+      <tr><td>الملاحظات</td><td><%= payment.notes %></td></tr>
+      <% } %>
+      <% if(s.voucherShowEmployee !== false && payment.employeeName) { %>
+      <tr><td>الموظف</td><td><%= payment.employeeName %></td></tr>
+      <% } %>
+      <% if(s.voucherShowBalanceBefore !== false) { %>
+      <tr><td>الرصيد قبل</td><td><%= bBefore.toLocaleString('ar-EG') %> <%= currSym %></td></tr>
+      <% } %>
+      <% if(s.voucherShowBalanceAfter !== false) { %>
+      <tr><td>الرصيد بعد</td><td><strong><%= bAfter.toLocaleString('ar-EG') %> <%= currSym %></strong></td></tr>
+      <% } %>
+    </table>
+
+    <!-- التواقيع -->
+    <% if(s.voucherShowReceiverSignature !== false || s.voucherShowClientSignature !== false || s.voucherShowAccountantSignature !== false) { %>
+    <div class="sig-section">
+      <div class="sig-row">
+        <% if(s.voucherShowReceiverSignature !== false) { %>
+          <div class="sig-box">توقيع المستلم</div>
+        <% } %>
+        <% if(s.voucherShowClientSignature !== false) { %>
+          <div class="sig-box">توقيع العميل</div>
+        <% } %>
+        <% if(s.voucherShowAccountantSignature !== false) { %>
+          <div class="sig-box">توقيع المحاسب</div>
+        <% } %>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+  <div class="voucher-footer">
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#64748b;flex-wrap:wrap;gap:4px;">
+      <div><% if(s.voucherFooterText) { %><%= s.voucherFooterText %><% } %></div>
+      <div>
+        <% if(s.voucherShowCommercialReg !== false && s.storeCommercialReg) { %>س.ت: <%= s.storeCommercialReg %><% } %>
+        <% if(s.voucherShowTaxNumber !== false && s.storeTaxNumber) { %> | رقم ضريبي: <%= s.storeTaxNumber %><% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if(isThermal) { %>
+<script>window.onload = function(){ window.print(); }</script>
+<% } %>
+<script>
+/* 25002500 062a062d0648064a0644 0627064406230631064206270645 06270644063906310628064a0629 064406440627062a064a0646064a0629 25002500 */
+(function(){
+  function fix(n){if(n.nodeType===3){n.nodeValue=n.nodeValue.replace(/[0660-0669]/g,function(d){return d.charCodeAt(0)-0x0660;});}else{n.childNodes.forEach(fix);}}
+  document.addEventListener('DOMContentLoaded',function(){fix(document.body);});
+})();
+</script>
+</body>
+</html>

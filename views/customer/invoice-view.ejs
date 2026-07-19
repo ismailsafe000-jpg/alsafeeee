@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ar-u-nu-latn" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فاتورة <%= invoice.invoiceNumber %> | <%= settings.storeName %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--gold:#d4af37;--bg:#f0f4f8;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);}
+    .topbar{background:linear-gradient(135deg,#0f172a,#1e3a5f);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;box-shadow:0 3px 20px rgba(0,0,0,.3);}
+    .brand{color:var(--gold);font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px;text-decoration:none;}
+    .topbar-actions{display:flex;gap:8px;align-items:center;}
+    .btn-icon{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#cbd5e1;padding:7px 12px;border-radius:8px;cursor:pointer;font-family:'Cairo',sans-serif;font-size:13px;text-decoration:none;display:flex;align-items:center;gap:5px;transition:.2s;}
+    .btn-icon:hover{background:rgba(212,175,55,.15);color:var(--gold);}
+    .page-wrap{max-width:900px;margin:0 auto;padding:30px 16px 60px;}
+    .inv-card{background:var(--card);border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.09);overflow:hidden;}
+    .inv-head{background:linear-gradient(135deg,#0f172a,#1e3a5f);padding:28px 32px;text-align:center;position:relative;}
+    .inv-head::after{content:'';position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#d4af37,transparent);}
+    .inv-head .store-logo{height:55px;border-radius:8px;margin-bottom:10px;}
+    .inv-head .store-nm{color:#d4af37;font-size:20px;font-weight:800;margin:0 0 3px;}
+    .inv-head .store-inf{color:#94a3b8;font-size:12px;margin:0;}
+    .inv-head .inv-badge{display:inline-block;margin-top:12px;background:rgba(212,175,55,.15);border:1px solid rgba(212,175,55,.4);border-radius:8px;padding:8px 20px;}
+    .inv-head .inv-badge h4{color:white;font-weight:700;margin:0;font-size:15px;}
+    .inv-head .inv-badge p{color:#94a3b8;font-size:11px;margin:2px 0 0;}
+    .party-strip{background:var(--card);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;}
+    .pi{display:flex;align-items:center;gap:7px;}
+    .pi i{color:#d4af37;}.pi span{font-size:13px;font-weight:600;color:var(--text);}
+    .items-wrap{padding:20px 28px;overflow-x:auto;}
+    .inv-table{width:100%;border-collapse:collapse;font-size:13px;min-width:450px;}
+    .inv-table thead tr{background:#1e293b;}
+    .inv-table thead th{color:white;padding:10px 12px;text-align:center;font-size:12px;font-weight:700;}
+    .inv-table tbody td{padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--text);}
+    .inv-table tbody tr:nth-child(even){background:rgba(0,0,0,.02);}
+    .inv-table tfoot td{padding:11px 12px;font-weight:700;border-top:2px solid var(--border);}
+    .unit-chip{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:rgba(212,175,55,.15);color:#92400e;}
+    .totals-section{margin:0 28px 20px;background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:14px;padding:20px 28px;color:white;}
+    .totals-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+    .tot-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px;text-align:center;}
+    .tot-box .lbl{font-size:11px;color:#94a3b8;margin-bottom:6px;}
+    .tot-box .val{font-size:18px;font-weight:800;}
+    /* قسم طرق الدفع */
+    .payments-section{margin:0 28px 28px;padding:18px 22px;background:rgba(22,163,74,.04);border:1px solid rgba(22,163,74,.2);border-radius:14px;}
+    .pay-title{font-size:14px;font-weight:800;color:#166534;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+    .pay-row{display:flex;flex-wrap:wrap;gap:12px;padding:10px 14px;background:white;border-radius:10px;border:1px solid rgba(22,163,74,.15);margin-bottom:8px;font-size:13px;align-items:center;}
+    .pay-row:last-child{margin-bottom:0;}
+    .pay-method-badge{padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;}
+    .pm-cash{background:rgba(22,163,74,.1);color:#15803d;}
+    .pm-bank{background:rgba(37,99,235,.1);color:#1d4ed8;}
+    .pm-check{background:rgba(212,175,55,.15);color:#92400e;}
+    footer{text-align:center;padding:16px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);}
+    @media(max-width:576px){
+      .inv-head{padding:20px 16px;}.party-strip{padding:12px 16px;}
+      .items-wrap{padding:14px 8px;}.totals-section,.payments-section{margin:0 12px 14px;padding:14px;}
+      .totals-grid{grid-template-columns:1fr;gap:8px;}
+    }
+    @media print{
+      body{background:white !important;}.no-print,.topbar{display:none !important;}
+      .inv-card{box-shadow:none;border-radius:0;}
+      .inv-head{background:white !important;border-bottom:2px solid #000;border-radius:0;padding:12px 18px;}
+      .inv-head::after{display:none;}
+      .inv-head .store-nm{color:#000 !important;}
+      .inv-head .inv-badge{background:none !important;border:1px solid #000 !important;}
+      .inv-head .inv-badge h4,.inv-head .inv-badge p{color:#000 !important;}
+      .party-strip{background:white !important;border-bottom:1px solid #ccc;padding:7px 14px;}
+      .pi span{color:#000 !important;}.pi i{display:none;}
+      .inv-table{font-size:9pt;}
+      .inv-table thead tr{background:#eee !important;-webkit-print-color-adjust:exact;}
+      .inv-table thead th{color:#000 !important;border:1px solid #999;padding:5px 8px;}
+      .inv-table tbody td,.inv-table tfoot td{border:1px solid #ddd;color:#000 !important;padding:4px 8px;}
+      .unit-chip{background:#eee !important;color:#000 !important;-webkit-print-color-adjust:exact;}
+      .totals-section{background:white !important;border:1px solid #999;margin:0 10px 8px;padding:10px;color:#000 !important;}
+      .tot-box{background:#f5f5f5 !important;border:1px solid #ccc !important;-webkit-print-color-adjust:exact;}
+      .tot-box .lbl{color:#333 !important;}.tot-box .val{color:#000 !important;font-size:12pt !important;}
+      .payments-section{background:#f9f9f9 !important;border:1px solid #ccc;margin:0 10px 8px;padding:10px;}
+      .pay-title{color:#000 !important;}
+      .pay-row{background:#f5f5f5 !important;border-color:#ccc !important;-webkit-print-color-adjust:exact;padding:5px 10px;}
+      .pay-method-badge{background:#eee !important;color:#000 !important;-webkit-print-color-adjust:exact;}
+      @page{size:<%= settings.invoicePrintSize === 'Thermal' ? '80mm' : (settings.invoicePrintSize||'A4') %>;margin:<%= (settings.printMarginTop||8) %>mm <%= (settings.printMarginSide||8) %>mm;}
+    }
+  </style>
+</head>
+<body>
+
+<nav class="topbar no-print">
+  <a href="/customer/" class="brand"><i class="fa-solid fa-couch"></i> <%= settings.storeName %></a>
+  <div class="topbar-actions">
+    <button class="btn-icon" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة</button>
+    <a href="/customer/invoices" class="btn-icon"><i class="fa-solid fa-arrow-right"></i> رجوع</a>
+    <a href="/logout" class="btn-icon" onclick="return confirm('هل تريد تسجيل الخروج؟')">
+      <i class="fa-solid fa-right-from-bracket"></i> خروج
+    </a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="inv-card">
+
+    <div class="inv-head">
+      <% if (settings.storeLogo && settings.storeLogo !== '/images/default-logo.png' && settings.showLogoInInvoice !== false) { %>
+        <img src="<%= settings.storeLogo %>" class="store-logo" alt="شعار المتجر">
+      <% } %>
+      <p class="store-nm"><%= settings.storeName %></p>
+      <p class="store-inf">
+        <% if (settings.storeAddress && settings.showAddressInInvoice !== false) { %><i class="fa-solid fa-location-dot"></i> <%= settings.storeAddress %>&nbsp;&nbsp;<% } %>
+        <% if (settings.storePhone && settings.showPhoneInInvoice !== false) { %><i class="fa-solid fa-phone"></i> <%= settings.storePhone %><% } %>
+      </p>
+      <div class="inv-badge">
+        <h4><i class="fa-solid fa-file-invoice-dollar"></i> فاتورة مبيعات</h4>
+        <p>رقم الفاتورة: <%= invoice.invoiceNumber %></p>
+        <p>التاريخ: <%= new Date(invoice.invoiceDate).toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric'}) %></p>
+      </div>
+    </div>
+
+    <div class="party-strip">
+      <div class="pi"><i class="fa-solid fa-user fa-lg"></i><span class="fw-bold" style="font-size:15px;"><%= customer.fullName %></span></div>
+      <% if (customer.phone) { %><div class="pi"><i class="fa-solid fa-phone"></i><span><%= customer.phone %></span></div><% } %>
+      <% if (customer.address) { %><div class="pi"><i class="fa-solid fa-map-marker-alt"></i><span><%= customer.address %></span></div><% } %>
+      <div class="pi" style="margin-right:auto;">
+        <span class="badge bg-<%= invoice.status==='paid'?'success':invoice.status==='partial'?'warning text-dark':'danger' %> rounded-pill">
+          <%= invoice.status==='paid'?'مدفوعة ✓':invoice.status==='partial'?'جزئي':'غير مدفوعة' %>
+        </span>
+      </div>
+    </div>
+
+    <div class="items-wrap">
+      <h6 class="fw-bold mb-3" style="color:#d4af37;"><i class="fa-solid fa-list-check"></i> تفاصيل الأصناف</h6>
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th style="width:4%">#</th>
+            <th style="width:35%;text-align:right!important;">الصنف / البيان</th>
+            <th style="width:10%">الوحدة</th>
+            <th style="width:16%">القياس / الكمية</th>
+            <th style="width:13%">سعر الوحدة <%= settings.currency||'₪' %></th>
+            <th style="width:13%">الإجمالي <%= settings.currency||'₪' %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% invoice.items.forEach((item,idx)=>{ %>
+            <tr>
+              <td style="color:#94a3b8;"><%= idx+1 %></td>
+              <td style="text-align:right!important;font-weight:600;"><%= item.description %></td>
+              <td><span class="unit-chip"><% if(item.quantityType==='meter'){%>متر طولي<%}else if(item.quantityType==='sqmeter'){%>متر مربع<%}else{%>كمية<%}%></span></td>
+              <td style="font-weight:700;">
+                <% if(item.quantityType==='sqmeter'){%><%= item.length %>×<%= item.width %>=<span style="color:#d4af37;"><%= item.quantity.toLocaleString('ar-EG') %>م²</span>
+                <%}else if(item.quantityType==='meter'){%><span style="color:#d4af37;"><%= item.quantity.toLocaleString('ar-EG') %>م</span>
+                <%}else{%><%= item.quantity %><%}%>
+              </td>
+              <td><%= item.unitPrice.toLocaleString('ar-EG') %></td>
+              <td class="fw-bold text-danger"><%= item.total.toLocaleString('ar-EG') %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+        <tfoot>
+          <% if(invoice.discount>0){ %>
+            <tr>
+              <td colspan="5" style="text-align:right!important;color:#16a34a;font-size:12px;">خصم</td>
+              <td style="color:#16a34a;font-weight:700;">− <%= invoice.discount.toLocaleString('ar-EG') %> <%= settings.currency||'₪' %></td>
+            </tr>
+          <% } %>
+          <tr style="background:rgba(212,175,55,.06);">
+            <td colspan="5" style="text-align:right!important;font-size:15px;color:#d4af37;">الإجمالي النهائي</td>
+            <td style="font-size:17px;color:#dc2626;font-weight:800;"><%= invoice.totalAmount.toLocaleString('ar-EG') %> <%= settings.currency||'₪' %></td>
+          </tr>
+        </tfoot>
+      </table>
+      <% if(invoice.notes){ %>
+        <div class="mt-3 p-3 rounded" style="background:rgba(212,175,55,.06);border:1px solid rgba(212,175,55,.2);font-size:13px;">
+          <i class="fa-solid fa-note-sticky me-1" style="color:#d4af37;"></i><strong>ملاحظات:</strong> <%= invoice.notes %>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="totals-section">
+      <div style="font-size:13px;font-weight:800;color:#d4af37;border-bottom:1px solid rgba(212,175,55,.3);padding-bottom:10px;margin-bottom:14px;">
+        <i class="fa-solid fa-chart-pie"></i> ملخص الفاتورة
+      </div>
+      <div class="totals-grid">
+        <div class="tot-box">
+          <div class="lbl">إجمالي الفاتورة</div>
+          <div class="val" style="color:#f87171;"><%= invoice.totalAmount.toLocaleString('ar-EG') %> <%= settings.currency||'₪' %></div>
+        </div>
+        <div class="tot-box">
+          <div class="lbl">المبلغ المدفوع</div>
+          <div class="val" style="color:#4ade80;"><%= invoice.paidAmount.toLocaleString('ar-EG') %> <%= settings.currency||'₪' %></div>
+        </div>
+        <div class="tot-box">
+          <div class="lbl">المبلغ المتبقي</div>
+          <div class="val" style="color:<%= invoice.remainingBalance>0?'#f87171':'#4ade80' %>;">
+            <%= invoice.remainingBalance.toLocaleString('ar-EG') %> <%= settings.currency||'₪' %>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;"><%= invoice.remainingBalance<=0?'مسددة بالكامل ✓':'مستحق السداد' %></div>
+        </div>
+      </div>
+    </div>
+
+    <% if (payments && payments.length > 0) { %>
+    <div class="payments-section">
+      <div class="pay-title"><i class="fa-solid fa-money-bill-wave"></i> سجل المدفوعات</div>
+      <% payments.forEach((p, pidx) => { %>
+        <div class="pay-row">
+          <span style="font-weight:700;color:#475569;">#<%= pidx+1 %></span>
+          <span>
+            <span class="pay-method-badge <%= p.paymentMethod==='cash'?'pm-cash':p.paymentMethod==='bank_transfer'?'pm-bank':'pm-check' %>">
+              <%= p.paymentMethod==='cash'?'نقداً':p.paymentMethod==='bank_transfer'?'تحويل بنكي':p.paymentMethod==='check'?'شيك':p.paymentMethod %>
+            </span>
+          </span>
+          <span style="font-weight:800;color:#16a34a;"><%= p.amount.toLocaleString('ar-EG') %> <%= settings.currency||'₪' %></span>
+          <span style="color:#64748b;font-size:12px;"><%= new Date(p.date).toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric'}) %></span>
+          <% if(p.chequeNumber){ %>
+            <span style="font-size:12px;color:#92400e;"><i class="fa-solid fa-money-check"></i> شيك رقم: <%= p.chequeNumber %> — <%= p.bankName %></span>
+          <% } %>
+          <% if(p.refNo){ %><span style="font-size:12px;color:#64748b;">مرجع: <%= p.refNo %></span><% } %>
+        </div>
+      <% }) %>
+    </div>
+    <% } %>
+
+  </div>
+</div>
+
+<footer><i class="fa-solid fa-couch me-1" style="color:var(--gold);"></i> <%= settings.storeName %></footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* 25002500 062a062d0648064a0644 0627064406230631064206270645 06270644063906310628064a0629 064406440627062a064a0646064a0629 25002500 */
+(function(){
+  function fix(n){if(n.nodeType===3){n.nodeValue=n.nodeValue.replace(/[0660-0669]/g,function(d){return d.charCodeAt(0)-0x0660;});}else{n.childNodes.forEach(fix);}}
+  document.addEventListener('DOMContentLoaded',function(){fix(document.body);});
+})();
+</script>
+</body>
+</html>

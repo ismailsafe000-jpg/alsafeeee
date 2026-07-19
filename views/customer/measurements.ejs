@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ar-u-nu-latn" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>عرض المقاسات | <%= settings.storeName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Cairo',sans-serif;background:#f0f4f8;color:#1e293b;direction:rtl;}
+
+    /* Screen buttons bar */
+    .print-bar{background:#0f172a;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:100;}
+    .bar-info{color:#94a3b8;font-size:13px;}
+    .bar-info strong{color:#d4af37;}
+    .bar-btns{display:flex;gap:10px;}
+    .bar-btn{padding:9px 20px;border-radius:9px;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;display:flex;align-items:center;gap:6px;text-decoration:none;}
+    .btn-pr{background:linear-gradient(135deg,#d4af37,#c5a030);color:white;}
+    .btn-bk{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#cbd5e1;}
+
+    /* Document */
+    .doc{max-width:820px;margin:24px auto;background:white;border-radius:12px;box-shadow:0 4px 30px rgba(0,0,0,.12);overflow:hidden;}
+
+    /* Document header */
+    .doc-head{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+    .store-side{color:white;}
+    .store-name{font-size:22px;font-weight:900;color:#d4af37;letter-spacing:.5px;}
+    .store-sub{font-size:12px;color:#94a3b8;margin-top:4px;display:flex;flex-direction:column;gap:2px;}
+    .store-sub span{display:flex;align-items:center;gap:5px;}
+    .store-logo{height:70px;border-radius:10px;border:2px solid rgba(255,255,255,.15);}
+    .visit-badge{background:rgba(212,175,55,.15);border:1px solid rgba(212,175,55,.3);border-radius:12px;padding:10px 20px;text-align:center;}
+    .visit-badge .vn{font-size:28px;font-weight:900;color:#d4af37;}
+    .visit-badge .vl{font-size:12px;color:#94a3b8;margin-top:2px;}
+
+    /* Customer bar */
+    .cust-bar{background:#f8fafc;border-bottom:2px solid #e2e8f0;padding:14px 32px;display:flex;flex-wrap:wrap;gap:20px;}
+    .cb-item{display:flex;flex-direction:column;gap:2px;}
+    .cb-lbl{font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;}
+    .cb-val{font-size:14px;font-weight:800;color:#1e293b;}
+
+    /* Content */
+    .doc-body{padding:28px 32px;}
+
+    /* Section */
+    .psec{margin-bottom:22px;}
+    .psec-tit{font-size:14px;font-weight:900;color:#0f172a;margin-bottom:12px;padding-bottom:7px;border-bottom:2px solid #d4af37;display:flex;align-items:center;gap:6px;}
+    .psec-tit .icon{width:26px;height:26px;background:linear-gradient(135deg,#d4af37,#c5a030);border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:white;}
+
+    /* Item block */
+    .pitem{border:1px solid #e2e8f0;border-radius:9px;margin-bottom:10px;overflow:hidden;}
+    .pitem-head{background:#f8fafc;padding:8px 14px;font-weight:800;font-size:13px;color:#1e3a5f;border-bottom:1px solid #e2e8f0;}
+    .pitem-body{padding:12px 14px;}
+
+    /* Info grid */
+    .irow{display:flex;flex-wrap:wrap;gap:12px 24px;}
+    .iitem{display:flex;flex-direction:column;gap:2px;min-width:100px;}
+    .ilbl{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;}
+    .ival{font-size:13px;font-weight:700;color:#1e293b;}
+    .ival-badge{display:inline-block;background:#fef9e7;border:1px solid #d4af37;border-radius:12px;padding:1px 10px;font-size:12px;font-weight:800;color:#92400e;}
+
+    /* Style image */
+    .style-img{max-height:90px;border-radius:7px;border:1px solid #e2e8f0;margin-top:8px;}
+
+    /* Canvas image */
+    .canvas-sec{margin-top:12px;border-top:1px dashed #e2e8f0;padding-top:12px;}
+    .canvas-lbl{font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:6px;}
+    .canvas-img{max-width:100%;border-radius:8px;border:1px solid #e2e8f0;}
+
+    /* Photos */
+    .photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}
+    .photo-img{width:100%;height:110px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;}
+
+    /* Notes */
+    .notes-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:14px;font-size:13px;line-height:2;white-space:pre-wrap;color:#1e293b;}
+
+    /* Signatures */
+    .sig-section{display:flex;justify-content:space-between;margin-top:30px;padding-top:20px;border-top:1px solid #e2e8f0;}
+    .sig-box{text-align:center;width:160px;}
+    .sig-line{height:1px;background:#333;margin-bottom:6px;}
+    .sig-lbl{font-size:12px;color:#64748b;font-weight:600;}
+
+    /* Total summary */
+    .total-summary{background:rgba(212,175,55,.08);border:2px solid #d4af37;border-radius:10px;padding:14px 18px;margin-top:12px;}
+    .total-summary .total-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-weight:700;font-size:14px;}
+    .total-summary .total-item i{color:#d4af37;}
+    .total-summary .total-item .total-value{color:#d4af37;font-size:20px;}
+    .total-summary .total-item .total-unit{font-size:12px;color:#64748b;}
+    .total-summary .total-item .total-count{font-size:12px;color:#64748b;}
+    .total-summary .total-details{margin-top:6px;padding-top:6px;border-top:1px dashed rgba(212,175,55,.3);font-size:11px;color:#64748b;}
+
+    /* Footer */
+    .doc-foot{background:#f8fafc;border-top:2px solid #e2e8f0;padding:12px 32px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#94a3b8;}
+    .doc-foot strong{color:#d4af37;}
+
+    /* Print CSS */
+    @media print{
+      .print-bar{display:none!important;}
+      body{background:white;}
+      .doc{box-shadow:none;border-radius:0;margin:0;max-width:100%;}
+      .doc-head{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      .pitem-head,.cust-bar,.doc-foot{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      .psec{break-inside:avoid;}
+      .pitem{break-inside:avoid;}
+      @page{size:A4;margin:8mm;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Screen bar -->
+<div class="print-bar">
+  <div class="bar-info">
+    عرض المقاسات - زيارة <strong>#<%= visit.visitNumber %></strong>
+  </div>
+  <div class="bar-btns">
+    <a href="/customer/" class="bar-btn btn-bk">← رجوع</a>
+    <button class="bar-btn btn-pr" onclick="window.print()">🖨 طباعة</button>
+  </div>
+</div>
+
+<!-- Document -->
+<div class="doc">
+
+  <!-- Header -->
+  <div class="doc-head">
+    <div class="store-side">
+      <div class="store-name"><%= settings.storeName || 'معرض الصافي للمفروشات' %></div>
+      <div class="store-sub">
+        <% if(settings.storePhone){%><span>📞 <%= settings.storePhone %></span><%}%>
+        <% if(settings.storeAddress){%><span>📍 <%= settings.storeAddress %></span><%}%>
+        <span>📅 <%= new Date().toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric'}) %></span>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
+      <% if(settings.storeLogo && settings.storeLogo !== '/images/default-logo.png'){%>
+        <img src="<%= settings.storeLogo %>" class="store-logo">
+      <%}%>
+      <div class="visit-badge">
+        <div class="vn">زيارة #<%= visit.visitNumber %></div>
+        <div class="vl">سجل المقاسات</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customer bar -->
+  <div class="cust-bar">
+    <div class="cb-item"><div class="cb-lbl">الزبون</div><div class="cb-val"><%= customer.fullName %></div></div>
+    <% if(customer.phone){%><div class="cb-item"><div class="cb-lbl">الهاتف</div><div class="cb-val"><%= customer.phone %></div></div><%}%>
+    <% if(customer.address){%><div class="cb-item"><div class="cb-lbl">العنوان</div><div class="cb-val"><%= customer.address %></div></div><%}%>
+    <div class="cb-item"><div class="cb-lbl">تاريخ الزيارة</div><div class="cb-val"><%= new Date(visit.visitDate).toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric'}) %></div></div>
+    <div class="cb-item"><div class="cb-lbl">رقم الزيارة</div><div class="cb-val">#<%= visit.visitNumber %></div></div>
+  </div>
+
+  <!-- Body -->
+  <div class="doc-body">
+
+    <!-- Sofas -->
+    <% if(visit.sofas && visit.sofas.length){ %>
+    <div class="psec">
+      <div class="psec-tit"><span class="icon">🛋</span> الكنبات (<%= visit.sofas.length %>)</div>
+      <% visit.sofas.forEach((s,i) => { %>
+      <div class="pitem">
+        <div class="pitem-head">كنب #<%= i+1 %> <%if(s.sofaType){%>— <%=s.sofaType%><%}%></div>
+        <div class="pitem-body">
+          <div class="irow">
+            <%if(s.seats){%><div class="iitem"><div class="ilbl">المقاعد</div><div class="ival"><span class="ival-badge"><%=s.seats%></span></div></div><%}%>
+            <%if(s.foamType){%><div class="iitem"><div class="ilbl">الإسفنج</div><div class="ival"><%=s.foamType%></div></div><%}%>
+            <%if(s.fabricType){%><div class="iitem"><div class="ilbl">القماش</div><div class="ival"><%=s.fabricType%></div></div><%}%>
+            <%if(s.color){%><div class="iitem"><div class="ilbl">اللون</div><div class="ival"><%=s.color%></div></div><%}%>
+            <%if(s.legType){%><div class="iitem"><div class="ilbl">الأرجل</div><div class="ival"><%=s.legType%></div></div><%}%>
+            <%if(s.cushionCount){%><div class="iitem"><div class="ilbl">المخدات</div><div class="ival"><span class="ival-badge"><%=s.cushionCount%></span></div></div><%}%>
+          </div>
+          <%if(s.styleImage){%><div><img src="<%=s.styleImage%>" class="style-img" alt="طقم الكنب"></div><%}%>
+          <%if(s.notes){%><div style="margin-top:8px;font-size:12px;color:#64748b;background:#f8fafc;border-radius:6px;padding:7px 10px;">📝 <%=s.notes%></div><%}%>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+
+    <!-- Qaadas -->
+    <% if(visit.qaadas && visit.qaadas.length){ %>
+    <div class="psec">
+      <div class="psec-tit"><span class="icon">🪑</span> القعدات (<%= visit.qaadas.length %>)</div>
+      <% visit.qaadas.forEach((q,i) => { %>
+      <div class="pitem">
+        <div class="pitem-head">قعدة #<%= i+1 %> <%if(q.qaadaType){%>— <%=q.qaadaType%><%}%></div>
+        <div class="pitem-body">
+          <div class="irow">
+            <%if(q.distance){%><div class="iitem"><div class="ilbl">المسافة</div><div class="ival"><span class="ival-badge"><%=q.distance%> م</span></div></div><%}%>
+            <%if(q.foamType){%><div class="iitem"><div class="ilbl">الإسفنج</div><div class="ival"><%=q.foamType%></div></div><%}%>
+            <%if(q.fabricType){%><div class="iitem"><div class="ilbl">القماش</div><div class="ival"><%=q.fabricType%></div></div><%}%>
+            <%if(q.color){%><div class="iitem"><div class="ilbl">اللون</div><div class="ival"><%=q.color%></div></div><%}%>
+            <%if(q.legType){%><div class="iitem"><div class="ilbl">الأرجل</div><div class="ival"><%=q.legType%></div></div><%}%>
+          </div>
+          <%if(q.styleImage){%><div><img src="<%=q.styleImage%>" class="style-img" alt="طقم القعدة"></div><%}%>
+          <%if(q.notes){%><div style="margin-top:8px;font-size:12px;color:#64748b;background:#f8fafc;border-radius:6px;padding:7px 10px;">📝 <%=q.notes%></div><%}%>
+        </div>
+      </div>
+      <% }) %>
+      <% if(visit.qaadaCanvasData){ %>
+      <div class="canvas-sec">
+        <div class="canvas-lbl">مخطط توزيع القعدة</div>
+        <img src="<%= visit.qaadaCanvasData %>" class="canvas-img">
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+
+    <!-- Rooms / Carpet -->
+    <% if(visit.rooms && visit.rooms.length){ 
+      let totalArea = 0;
+      visit.rooms.forEach(r => { totalArea += (r.area || 0); });
+    %>
+    <div class="psec">
+      <div class="psec-tit"><span class="icon">🏠</span> الموكيت والغرف (<%= visit.rooms.length %> غرفة)</div>
+      <div class="pitem">
+        <div class="pitem-body" style="padding:0;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;">#</th>
+                <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;">اسم الغرفة</th>
+                <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;">الطول (م)</th>
+                <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;">العرض (م)</th>
+                <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;">المساحة (م²)</th>
+                <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;">نوع الموكيت</th>
+                <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;">اللون</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% visit.rooms.forEach((r,i) => { %>
+              <tr style="border-bottom:1px solid #f1f5f9;<% if(i%2===0){%>background:white;<%}else{%>background:#fafbfc;<%}%>">
+                <td style="padding:8px 12px;color:#94a3b8;font-weight:700;"><%= i+1 %></td>
+                <td style="padding:8px 12px;font-weight:800;"><%= r.name||'—' %></td>
+                <td style="padding:8px 12px;"><%= r.length||'—' %></td>
+                <td style="padding:8px 12px;"><%= r.width||'—' %></td>
+                <td style="padding:8px 12px;"><span class="ival-badge"><%= r.area ? r.area.toFixed(2) : '—' %></span></td>
+                <td style="padding:8px 12px;"><%= r.carpetType||'—' %></td>
+                <td style="padding:8px 12px;"><%= r.color||'—' %></td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+          <!-- Total Carpet -->
+          <div class="total-summary" style="margin:10px 12px 0;">
+            <div class="total-item">
+              <span style="font-size:18px;">🏠</span>
+              <span>إجمالي الموكيت:</span>
+              <span class="total-value"><%= totalArea.toFixed(2) %></span>
+              <span class="total-unit">م²</span>
+              <span class="total-count">(<%= visit.rooms.length %> غرفة)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Windows / Curtains -->
+    <% if(visit.windows && visit.windows.length){ 
+      let totalCurtains = 0;
+      let totalPieces = 0;
+      visit.windows.forEach(w => {
+        totalCurtains += (w.width || 0) * (w.count || 1);
+        totalPieces += (w.count || 1);
+      });
+    %>
+    <div class="psec">
+      <div class="psec-tit"><span class="icon">🪟</span> البرادي والشبابيك (<%= visit.windows.length %>)</div>
+      <% visit.windows.forEach((w,i) => { 
+        const totalWidth = (w.width || 0) * (w.count || 1);
+      %>
+      <div class="pitem">
+        <div class="pitem-head">شباك #<%= i+1 %> <%if(w.location){%>— <%=w.location%><%}%></div>
+        <div class="pitem-body">
+          <div class="irow">
+            <%if(w.width){%><div class="iitem"><div class="ilbl">العرض</div><div class="ival"><%=w.width%> م</div></div><%}%>
+            <%if(w.height){%><div class="iitem"><div class="ilbl">الارتفاع</div><div class="ival"><%=w.height%> م</div></div><%}%>
+            <% if(w.count && w.count > 1){ %>
+              <div class="iitem"><div class="ilbl">العدد</div><div class="ival"><span class="ival-badge"><%=w.count%></span></div></div>
+            <% } %>
+            <% if(totalWidth > 0){ %>
+              <div class="iitem"><div class="ilbl">الإجمالي</div><div class="ival"><span class="ival-badge"><%=totalWidth.toFixed(2)%> م</span></div></div>
+            <% } %>
+            <%if(w.curtainTypeName){%><div class="iitem"><div class="ilbl">نوع البرادي</div><div class="ival"><%=w.curtainTypeName%></div></div><%}%>
+            <%if(w.fabricType){%><div class="iitem"><div class="ilbl">القماش</div><div class="ival"><%=w.fabricType%></div></div><%}%>
+            <%if(w.color){%><div class="iitem"><div class="ilbl">اللون</div><div class="ival"><%=w.color%></div></div><%}%>
+          </div>
+          <%if(w.curtainTypeImage){%><div style="margin-top:8px;"><div class="ilbl" style="margin-bottom:4px;">صورة البرادي</div><img src="<%=w.curtainTypeImage%>" style="height:70px;border-radius:7px;border:1px solid #e2e8f0;"></div><%}%>
+          <%if(w.notes){%><div style="margin-top:8px;font-size:12px;color:#64748b;background:#f8fafc;border-radius:6px;padding:7px 10px;">📝 <%=w.notes%></div><%}%>
+        </div>
+      </div>
+      <% }) %>
+      
+      <!-- Total Curtains Summary -->
+      <div class="total-summary">
+        <div class="total-item" style="flex-wrap:wrap;">
+          <span style="font-size:18px;">🪟</span>
+          <span>إجمالي البرادي:</span>
+          <span class="total-value"><%= totalCurtains.toFixed(2) %></span>
+          <span class="total-unit">م</span>
+          <span class="total-count">(<%= totalPieces %> قطعة - <%= visit.windows.length %> نوع)</span>
+        </div>
+      </div>
+      
+      <% if(visit.windowsCanvasData){ %>
+      <div class="canvas-sec">
+        <div class="canvas-lbl">مخطط توزيع الشبابيك</div>
+        <img src="<%= visit.windowsCanvasData %>" class="canvas-img">
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+
+    <!-- Photos -->
+    <% if(visit.photos && visit.photos.length){ %>
+    <div class="psec">
+      <div class="psec-tit"><span class="icon">📷</span> الصور (<%= visit.photos.length %>)</div>
+      <div class="photos-grid">
+        <% visit.photos.forEach(p => { %>
+          <img src="<%= p.url %>" class="photo-img" alt="صورة">
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Notes -->
+    <% if(visit.generalNotes){ %>
+    <div class="psec">
+      <div class="psec-tit"><span class="icon">📝</span> ملاحظات</div>
+      <div class="notes-box"><%= visit.generalNotes %></div>
+    </div>
+    <% } %>
+
+    <!-- Signatures -->
+    <div class="sig-section">
+      <div class="sig-box">
+        <div class="sig-line"></div>
+        <div class="sig-lbl">توقيع الفني</div>
+      </div>
+      <div class="sig-box">
+        <div class="sig-line"></div>
+        <div class="sig-lbl">توقيع الزبون</div>
+      </div>
+    </div>
+
+  </div><!-- /doc-body -->
+
+  <!-- Footer -->
+  <div class="doc-foot">
+    <span><strong><%= settings.storeName || 'معرض الصافي للمفروشات' %></strong> — سجل المقاسات</span>
+    <span>زيارة #<%= visit.visitNumber %> | <%= new Date(visit.visitDate).toLocaleDateString('ar-EG') %></span>
+  </div>
+
+</div><!-- /doc -->
+<script src="/cdn-cgi/scripts/7d0fa10a/cloudflare-static/rocket-loader.min.js" data-cf-settings="db2f210af979ac8680524441-|49" defer></script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a140cd71e89b65ca',t:'MTc4Mjg2MDU4Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>
+/* 25002500 062a062d0648064a0644 0627064406230631064206270645 06270644063906310628064a0629 064406440627062a064a0646064a0629 25002500 */
+(function(){
+  function fix(n){if(n.nodeType===3){n.nodeValue=n.nodeValue.replace(/[0660-0669]/g,function(d){return d.charCodeAt(0)-0x0660;});}else{n.childNodes.forEach(fix);}}
+  document.addEventListener('DOMContentLoaded',function(){fix(document.body);});
+})();
+</script>
+</body>
+</html>

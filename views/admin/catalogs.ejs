@@ -1,0 +1,120 @@
+<%- include('../partials/admin-header') %>
+
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+  <h2 class="section-title mb-0">
+    <i class="fa-solid fa-book-open-cover"></i> إدارة الكتالوجات
+  </h2>
+  <a href="/admin/catalogs/add" class="btn btn-gold">
+    <i class="fa-solid fa-plus"></i> كتالوج جديد
+  </a>
+</div>
+
+<% if (catalogs.length === 0) { %>
+  <div class="text-center py-5" style="background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border-color);">
+    <i class="fa-solid fa-book-open fa-3x mb-3" style="color: var(--primary-gold);"></i>
+    <h5 style="color: var(--text-muted);">لا توجد كتالوجات بعد</h5>
+    <a href="/admin/catalogs/add" class="btn btn-gold mt-2">
+      <i class="fa-solid fa-plus"></i> إنشاء أول كتالوج
+    </a>
+  </div>
+<% } else { %>
+
+<div class="row g-4">
+  <% catalogs.forEach(cat => { %>
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="catalog-admin-card">
+        <div class="catalog-cover-wrap">
+          <% if (cat.cover) { %>
+            <img src="<%= cat.cover %>" class="catalog-cover-img" alt="<%= cat.name %>">
+          <% } else { %>
+            <div class="catalog-cover-placeholder">
+              <i class="fa-solid fa-book-open fa-3x" style="color: rgba(212,175,55,0.4);"></i>
+            </div>
+          <% } %>
+          <div class="catalog-cover-badges">
+            <span class="badge bg-<%= cat.isActive ? 'success' : 'secondary' %> rounded-pill">
+              <i class="fa-solid fa-<%= cat.isActive ? 'eye' : 'eye-slash' %>"></i>
+              <%= cat.isActive ? 'مفعّل' : 'مخفي' %>
+            </span>
+          </div>
+          <div class="catalog-img-count">
+            <i class="fa-solid fa-images"></i> <%= cat.images.length %> صورة
+          </div>
+        </div>
+        <div class="catalog-card-body">
+          <h5 class="catalog-name"><%= cat.name %></h5>
+          <% if (cat.description) { %>
+            <p class="catalog-desc"><%= cat.description %></p>
+          <% } %>
+          <div class="catalog-actions">
+            <a href="/admin/catalogs/<%= cat._id %>/images" class="btn btn-sm btn-gold">
+              <i class="fa-solid fa-images"></i> الصور
+            </a>
+            <a href="/admin/catalogs/edit/<%= cat._id %>" class="btn btn-sm btn-outline-secondary">
+              <i class="fa-solid fa-pen"></i> تعديل
+            </a>
+            <a href="/admin/catalogs/toggle/<%= cat._id %>" class="btn btn-sm btn-outline-<%= cat.isActive ? 'warning' : 'success' %>">
+              <i class="fa-solid fa-<%= cat.isActive ? 'eye-slash' : 'eye' %>"></i>
+            </a>
+            <a href="/catalog/<%= cat._id %>" target="_blank" class="btn btn-sm btn-outline-info">
+              <i class="fa-solid fa-external-link-alt"></i>
+            </a>
+            <a href="/admin/catalogs/delete/<%= cat._id %>"
+               class="btn btn-sm btn-outline-danger"
+               onclick="return confirm('سيتم حذف الكتالوج وجميع صوره. هل أنت متأكد؟')">
+              <i class="fa-solid fa-trash"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<% } %>
+
+<style>
+.catalog-admin-card {
+  background: var(--card-bg);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.catalog-admin-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.13);
+}
+.catalog-cover-wrap {
+  position: relative;
+  height: 180px;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  overflow: hidden;
+}
+.catalog-cover-img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform 0.3s;
+}
+.catalog-admin-card:hover .catalog-cover-img { transform: scale(1.04); }
+.catalog-cover-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+.catalog-cover-badges {
+  position: absolute; top: 10px; right: 10px;
+}
+.catalog-img-count {
+  position: absolute; bottom: 8px; left: 10px;
+  background: rgba(0,0,0,0.6); color: #fff;
+  font-size: 12px; padding: 4px 10px; border-radius: 20px;
+  backdrop-filter: blur(4px);
+}
+.catalog-card-body { padding: 16px; }
+.catalog-name { font-size: 16px; font-weight: 800; color: var(--text-main); margin: 0 0 6px; }
+.catalog-desc { font-size: 13px; color: var(--text-muted); margin: 0 0 12px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.catalog-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.catalog-actions .btn { font-size: 12px; padding: 5px 10px; border-radius: 8px; }
+</style>
+
+<%- include('../partials/admin-footer') %>

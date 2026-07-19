@@ -1,0 +1,470 @@
+<%- include('../partials/admin-header') %>
+<%
+// ========== دوال تحويل الأرقام إلى كلمات ==========
+function numberToArabicWords(num) {
+    if (num === 0) return 'صفر';
+    if (num < 0) return 'سالب ' + numberToArabicWords(Math.abs(num));
+    
+    const ones = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
+    const onesFemale = ['', 'واحدة', 'اثنتان', 'ثلاث', 'أربع', 'خمس', 'ست', 'سبع', 'ثمان', 'تسع'];
+    const tens = ['', 'عشرة', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
+    const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+    
+    function convertUnderHundred(n, isFemale = false) {
+        if (n === 0) return '';
+        if (n < 10) {
+            return isFemale ? onesFemale[n] : ones[n];
+        }
+        if (n < 20) {
+            if (n === 10) return 'عشرة';
+            if (n === 11) return isFemale ? 'إحدى عشرة' : 'أحد عشر';
+            if (n === 12) return isFemale ? 'اثنتا عشرة' : 'اثنا عشر';
+            const num = n - 10;
+            if (isFemale) {
+                return onesFemale[num] + ' عشرة';
+            }
+            return ones[num] + ' عشر';
+        }
+        if (n < 100) {
+            const tensPart = Math.floor(n / 10);
+            const onesPart = n % 10;
+            if (onesPart === 0) return tens[tensPart];
+            const connector = ' و';
+            if (isFemale && onesPart > 2) {
+                return tens[tensPart] + connector + onesFemale[onesPart];
+            }
+            return tens[tensPart] + connector + (isFemale ? onesFemale[onesPart] : ones[onesPart]);
+        }
+        return '';
+    }
+    
+    function convertUnderThousand(n, isFemale = false) {
+        if (n === 0) return '';
+        const hundredsPart = Math.floor(n / 100);
+        const remainder = n % 100;
+        let result = '';
+        if (hundredsPart > 0) {
+            if (hundredsPart === 1 && remainder === 0) {
+                result = 'مائة';
+            } else if (hundredsPart === 2 && remainder === 0) {
+                result = 'مائتان';
+            } else if (hundredsPart === 2) {
+                result = 'مائتا';
+            } else {
+                result = hundreds[hundredsPart];
+                if (remainder > 0) result += ' و';
+            }
+        }
+        if (remainder > 0) {
+            result += convertUnderHundred(remainder, isFemale);
+        }
+        return result;
+    }
+    
+    function convertNumber(n) {
+        if (n === 0) return 'صفر';
+        let parts = [];
+        let numStr = n.toString();
+        let groups = [];
+        let temp = numStr;
+        while (temp.length > 0) {
+            let group = temp.slice(-3);
+            temp = temp.slice(0, -3);
+            groups.push(parseInt(group) || 0);
+        }
+        groups = groups.reverse();
+        
+        for (let i = 0; i < groups.length; i++) {
+            const group = groups[i];
+            if (group === 0) continue;
+            const groupIndex = groups.length - 1 - i;
+            let groupText = '';
+            
+            if (groupIndex === 0) {
+                groupText = convertUnderThousand(group, false);
+            } else if (groupIndex === 1) {
+                if (group === 1) {
+                    groupText = 'ألف';
+                } else if (group === 2) {
+                    groupText = 'ألفان';
+                } else if (group >= 3 && group <= 10) {
+                    groupText = convertUnderThousand(group, true) + ' آلاف';
+                } else {
+                    groupText = convertUnderThousand(group, false) + ' ألف';
+                }
+            } else if (groupIndex === 2) {
+                if (group === 1) {
+                    groupText = 'مليون';
+                } else if (group === 2) {
+                    groupText = 'مليونان';
+                } else if (group >= 3 && group <= 10) {
+                    groupText = convertUnderThousand(group, true) + ' ملايين';
+                } else {
+                    groupText = convertUnderThousand(group, false) + ' مليون';
+                }
+            } else if (groupIndex === 3) {
+                if (group === 1) {
+                    groupText = 'مليار';
+                } else if (group === 2) {
+                    groupText = 'ملياران';
+                } else if (group >= 3 && group <= 10) {
+                    groupText = convertUnderThousand(group, true) + ' مليارات';
+                } else {
+                    groupText = convertUnderThousand(group, false) + ' مليار';
+                }
+            }
+            
+            if (groupText) parts.push(groupText);
+        }
+        
+        return parts.join(' و ');
+    }
+    
+    return convertNumber(num);
+}
+
+function getAmountWords(amount) {
+    const parts = amount.toString().split('.');
+    const integerPart = parseInt(parts[0]);
+    const decimalPart = parts[1] ? parseInt(parts[1]) : 0;
+    
+    let result = '';
+    if (integerPart > 0) {
+        result = numberToArabicWords(integerPart);
+    } else {
+        result = 'صفر';
+    }
+    
+    if (decimalPart > 0) {
+        let decimalStr = decimalPart.toString();
+        while (decimalStr.endsWith('0')) {
+            decimalStr = decimalStr.slice(0, -1);
+        }
+        const decimalValue = parseInt(decimalStr);
+        if (decimalValue > 0) {
+            result += ' و ' + numberToArabicWords(decimalValue) + ' جزءاً من مائة';
+        }
+    }
+    
+    return result;
+}
+// ========== نهاية دوال التحويل ==========
+
+const isReceipt = !payment.voucherType || payment.voucherType === 'receipt';
+const s = settings;
+const currSym = payment.currency || s.currency || '₪';
+const pDate = new Date(payment.paymentDate);
+const amountWords = getAmountWords(payment.amount);
+const bBefore = payment.balanceBefore || 0;
+const bAfter = payment.balanceAfter || 0;
+%>
+
+<style>
+  .voucher-wrap { max-width: 820px; margin: 0 auto; }
+  .voucher-card {
+    background: var(--card-bg);
+    border-radius: 18px; border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-soft); overflow: hidden;
+  }
+  .voucher-header {
+    padding: 28px 32px 20px;
+    background: linear-gradient(135deg, <%= s.voucherHeaderColor || '#1e293b' %>, <%= s.voucherHeaderColor || '#0f172a' %>);
+    color: #fff;
+  }
+  .voucher-body { padding: 28px 32px; }
+  .voucher-footer {
+    background: <%= s.voucherFooterColor || '#f1f5f9' %>;
+    border-top: 1px solid var(--border-color);
+    padding: 20px 32px;
+  }
+  .info-row {
+    display: flex; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--border-color);
+    font-size: 14px;
+  }
+  .info-row:last-of-type { border-bottom: none; }
+  .info-label { color: var(--text-muted); font-weight: 600; min-width: 140px; }
+  .info-value { font-weight: 700; color: var(--text-main); text-align: left; direction: ltr; }
+  .amount-box {
+    background: <%= isReceipt ? '#d1fae5' : '#fee2e2' %>;
+    border: 2px solid <%= isReceipt ? '#6ee7b7' : '#fca5a5' %>;
+    border-radius: 16px; padding: 20px 28px; text-align: center; margin: 20px 0;
+  }
+  .amount-box .amount-num {
+    font-size: 36px; font-weight: 900;
+    color: <%= isReceipt ? '#065f46' : '#991b1b' %>;
+    direction: ltr;
+  }
+  .amount-box .amount-words {
+    font-size: 14px; color: var(--text-muted); margin-top: 6px;
+  }
+  .audit-row { font-size: 12px; color: var(--text-muted); padding: 4px 0; }
+  .sig-box {
+    border: 1px dashed var(--border-color); border-radius: 12px;
+    padding: 24px 20px 12px; text-align: center; min-height: 80px;
+  }
+  .sig-label { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+  .party-type-badge {
+    display: inline-block;
+    padding: 4px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    background: <%= payment.type === 'dealer' ? '#fef3c7' : '#dbeafe' %>;
+    color: <%= payment.type === 'dealer' ? '#92400e' : '#1e40af' %>;
+    border: 1px solid <%= payment.type === 'dealer' ? '#f59e0b' : '#3b82f6' %>;
+  }
+</style>
+
+<div class="voucher-wrap">
+  <!-- رأس الصفحة -->
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <h2 class="section-title mb-0">
+      <i class="fa-solid fa-receipt"></i>
+      عرض السند — <span style="font-family:monospace;"><%= payment.voucherNumber || payment._id %></span>
+    </h2>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="/admin/payments/edit/<%= payment._id %>" class="btn btn-outline-warning">
+        <i class="fa-solid fa-pen me-1"></i> تعديل
+      </a>
+      <a href="/admin/payments/print/<%= payment._id %>" target="_blank" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-print me-1"></i> طباعة
+      </a>
+      <a href="/admin/payments/print/<%= payment._id %>?pdf=1" target="_blank" class="btn btn-outline-dark">
+        <i class="fa-solid fa-file-pdf me-1"></i> PDF
+      </a>
+      <form action="/admin/payments/delete/<%= payment._id %>" method="POST" class="d-inline"
+        onsubmit="return confirm('هل أنت متأكد من حذف هذا السند؟')">
+        <button class="btn btn-outline-danger"><i class="fa-solid fa-trash me-1"></i> حذف</button>
+      </form>
+      <a href="/admin/payments" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-right me-1"></i> القائمة
+      </a>
+    </div>
+  </div>
+
+  <!-- السند -->
+  <div class="voucher-card">
+
+    <!-- Header -->
+    <div class="voucher-header">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+          <% if(s.voucherShowLogo !== false && s.storeLogo && s.storeLogo !== '/images/default-logo.png') { %>
+            <img src="<%= s.storeLogo %>" style="height:<%= s.voucherLogoSize||70 %>px;object-fit:contain;border-radius:8px;margin-bottom:10px;" alt="شعار">
+          <% } %>
+          <% if(s.voucherShowStoreName !== false) { %>
+            <div style="font-size:20px;font-weight:900;"><%= s.storeName %></div>
+          <% } %>
+          <% if(s.voucherShowAddress !== false && s.storeAddress) { %>
+            <div style="font-size:13px;opacity:0.8;margin-top:4px;"><%= s.storeAddress %><% if(s.storeCity) { %>, <%= s.storeCity %><% } %></div>
+          <% } %>
+          <div style="font-size:12px;opacity:0.7;margin-top:4px;">
+            <% if(s.voucherShowPhone !== false && s.storePhone) { %><i class="fa-solid fa-phone me-1"></i><%= s.storePhone %> &nbsp;<% } %>
+            <% if(s.voucherShowMobile !== false && s.storeMobile) { %><i class="fa-solid fa-mobile me-1"></i><%= s.storeMobile %><% } %>
+          </div>
+        </div>
+        <div class="text-end">
+          <div style="font-size:13px;opacity:0.7;margin-bottom:6px;">
+            <%= isReceipt ? 'سند قبض' : 'سند صرف' %>
+          </div>
+          <div style="font-size:28px;font-weight:900;font-family:monospace;letter-spacing:1px;">
+            <%= payment.voucherNumber || '—' %>
+          </div>
+          <div style="font-size:13px;opacity:0.8;margin-top:6px;">
+            <i class="fa-solid fa-calendar me-1"></i>
+            <%= pDate.toLocaleDateString('ar-EG', {year:'numeric',month:'long',day:'numeric'}) %>
+            <% if(s.voucherShowTime !== false) { %>
+              — <%= pDate.toLocaleTimeString('ar-EG', {hour:'2-digit',minute:'2-digit'}) %>
+            <% } %>
+          </div>
+          <div class="mt-2 d-flex gap-2 justify-content-end">
+            <span style="background:rgba(255,255,255,0.15);padding:4px 14px;border-radius:20px;font-size:12px;">
+              <%= isReceipt ? '📥 قبض' : '📤 صرف' %>
+            </span>
+            <span class="party-type-badge">
+              <% if(payment.type === 'dealer') { %>
+                🏪 تاجر
+              <% } else { %>
+                👤 زبون
+              <% } %>
+            </span>
+          </div>
+        </div>
+      </div>
+      <% if(s.voucherHeaderText) { %>
+        <div style="margin-top:14px;font-size:13px;opacity:0.8;text-align:center;"><%= s.voucherHeaderText %></div>
+      <% } %>
+    </div>
+
+    <!-- Body -->
+    <div class="voucher-body">
+
+      <!-- مبلغ السند -->
+      <div class="amount-box">
+        <div style="font-size:13px;color:var(--text-muted);font-weight:600;margin-bottom:6px;">
+          <%= isReceipt ? 'استلمنا من السيد/ة' : 'صرفنا للسيد/ة' %>:
+          <strong style="font-size:15px;color:var(--text-main);"> <%= payment.partyName %></strong>
+        </div>
+        <div class="amount-num"><%= payment.amount.toLocaleString('ar-EG') %> <%= currSym %></div>
+        <% if(s.voucherShowAmountInWords !== false) { %>
+          <div class="amount-words">فقط <%= amountWords %> لا غير</div>
+        <% } %>
+      </div>
+
+      <!-- تفاصيل -->
+      <div style="border:1px solid var(--border-color);border-radius:12px;overflow:hidden;margin-bottom:20px;">
+        <% if(s.voucherShowPaymentMethod !== false) { %>
+        <div class="info-row px-4">
+          <span class="info-label"><i class="fa-solid fa-wallet me-2"></i>طريقة الدفع</span>
+          <span class="info-value">
+            <% if(payment.paymentMethod==='cash') { %>💵 نقداً
+            <% } else if(payment.paymentMethod==='bank_transfer') { %>🏦 تحويل بنكي
+            <% } else if(payment.paymentMethod==='check') { %>📄 شيك
+            <% } else if(payment.paymentMethod==='card') { %>💳 بطاقة
+            <% } else { %><%= payment.paymentMethod %><% } %>
+          </span>
+        </div>
+        <% } %>
+        <% if(s.voucherShowBank !== false && (payment.bankName) && (payment.paymentMethod==='check'||payment.paymentMethod==='bank_transfer')) { %>
+        <div class="info-row px-4">
+          <span class="info-label"><i class="fa-solid fa-building-columns me-2"></i>البنك</span>
+          <span class="info-value"><%= payment.bankName %></span>
+        </div>
+        <% } %>
+        <% if(s.voucherShowChequeNumber !== false && payment.paymentMethod==='check' && payment.chequeNumber) { %>
+        <div class="info-row px-4">
+          <span class="info-label"><i class="fa-solid fa-money-check me-2"></i>رقم الشيك</span>
+          <span class="info-value"><%= payment.chequeNumber %></span>
+        </div>
+        <div class="info-row px-4">
+          <span class="info-label"><i class="fa-solid fa-calendar-check me-2"></i>تاريخ الاستحقاق</span>
+          <span class="info-value">
+            <%= payment.chequeDueDate ? new Date(payment.chequeDueDate).toLocaleDateString('ar-EG') : '—' %>
+          </span>
+        </div>
+        <% } %>
+        <% if(s.voucherShowInvoiceRef !== false && payment.invoiceId) { %>
+        <div class="info-row px-4">
+          <span class="info-label"><i class="fa-solid fa-file-invoice me-2"></i>الفاتورة المرتبطة</span>
+          <span class="info-value">
+            <a href="/admin/invoices/view/<%= payment.invoiceId._id %>" style="color:var(--primary-gold);text-decoration:none;">
+              <%= payment.invoiceId.invoiceNumber %>
+            </a>
+          </span>
+        </div>
+        <% } %>
+        <% if(s.voucherShowDescription !== false && payment.description) { %>
+        <div class="info-row px-4">
+          <span class="info-label"><i class="fa-solid fa-comment-dots me-2"></i>البيان</span>
+          <span class="info-value" style="direction:rtl;text-align:right;"><%= payment.description %></span>
+        </div>
+        <% } %>
+        <% if(s.voucherShowNotes !== false && payment.notes) { %>
+        <div class="info-row px-4">
+          <span class="info-label"><i class="fa-solid fa-note-sticky me-2"></i>الملاحظات</span>
+          <span class="info-value" style="direction:rtl;text-align:right;"><%= payment.notes %></span>
+        </div>
+        <% } %>
+        <% if(s.voucherShowEmployee !== false && payment.employeeName) { %>
+        <div class="info-row px-4">
+          <span class="info-label"><i class="fa-solid fa-user-tie me-2"></i>الموظف</span>
+          <span class="info-value"><%= payment.employeeName %></span>
+        </div>
+        <% } %>
+        <% if(s.voucherShowBalanceBefore !== false) { %>
+        <div class="info-row px-4">
+          <span class="info-label"><i class="fa-solid fa-scale-balanced me-2"></i>الرصيد قبل</span>
+          <span class="info-value"><%= bBefore.toLocaleString('ar-EG') %> <%= currSym %></span>
+        </div>
+        <% } %>
+        <% if(s.voucherShowBalanceAfter !== false) { %>
+        <div class="info-row px-4">
+          <span class="info-label"><i class="fa-solid fa-scale-balanced me-2"></i>الرصيد بعد</span>
+          <span class="info-value" style="color:<%= bAfter>=0?'#dc2626':'#059669' %>;">
+            <%= bAfter.toLocaleString('ar-EG') %> <%= currSym %>
+          </span>
+        </div>
+        <% } %>
+        <!-- عرض تأثير الحركة على الرصيد -->
+        <div class="info-row px-4" style="background: <%= isReceipt ? '#f0fdf4' : '#fef2f2' %>;">
+          <span class="info-label"><i class="fa-solid fa-info-circle me-2"></i>تأثير الحركة</span>
+          <span class="info-value" style="font-size:13px;">
+            <% if(payment.type === 'customer') { %>
+              <%= isReceipt ? '📉 الزبون دفع → الرصيد نقص' : '📈 الزبون استلم → الرصيد زاد' %>
+            <% } else if(payment.type === 'dealer') { %>
+              <%= isReceipt ? '📈 التاجر دفع لك → الرصيد زاد' : '📉 دفعت للتاجر → الرصيد نقص' %>
+            <% } %>
+          </span>
+        </div>
+      </div>
+
+      <!-- التواقيع -->
+      <% if(s.voucherShowReceiverSignature !== false || s.voucherShowClientSignature !== false || s.voucherShowAccountantSignature !== false) { %>
+      <div class="row g-3 mt-2">
+        <% if(s.voucherShowReceiverSignature !== false) { %>
+        <div class="col-4">
+          <div class="sig-box">
+            <div class="sig-label">توقيع المستلم</div>
+          </div>
+        </div>
+        <% } %>
+        <% if(s.voucherShowClientSignature !== false) { %>
+        <div class="col-4">
+          <div class="sig-box">
+            <div class="sig-label">توقيع العميل</div>
+          </div>
+        </div>
+        <% } %>
+        <% if(s.voucherShowAccountantSignature !== false) { %>
+        <div class="col-4">
+          <div class="sig-box">
+            <div class="sig-label">توقيع المحاسب</div>
+          </div>
+        </div>
+        <% } %>
+      </div>
+      <% } %>
+    </div>
+
+    <!-- Footer -->
+    <div class="voucher-footer">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div style="font-size:12px;color:var(--text-muted);">
+          <% if(s.voucherFooterText) { %><%= s.voucherFooterText %><% } %>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);">
+          <% if(s.voucherShowCommercialReg !== false && s.storeCommercialReg) { %>
+            سجل تجاري: <%= s.storeCommercialReg %> &nbsp;|
+          <% } %>
+          <% if(s.voucherShowTaxNumber !== false && s.storeTaxNumber) { %>
+            رقم ضريبي: <%= s.storeTaxNumber %>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- سجل العمليات -->
+  <% if(payment.auditLog && payment.auditLog.length > 0) { %>
+  <div class="mt-4 p-3" style="background:var(--card-bg);border-radius:12px;border:1px solid var(--border-color);">
+    <h6 style="font-size:13px;font-weight:700;color:var(--text-muted);margin-bottom:12px;">
+      <i class="fa-solid fa-clock-rotate-left me-2"></i>سجل العمليات
+    </h6>
+    <% payment.auditLog.forEach(log => { %>
+      <div class="audit-row d-flex justify-content-between">
+        <span>
+          <% if(log.action==='created') { %><span class="text-success">✅ إنشاء</span>
+          <% } else if(log.action==='edited') { %><span class="text-warning">✏️ تعديل</span>
+          <% } else { %><span class="text-danger">🗑 حذف</span><% } %>
+          — <%= log.user || 'admin' %>
+          <% if(log.note) { %> — <%= log.note %><% } %>
+        </span>
+        <span><%= new Date(log.date).toLocaleString('ar-EG') %></span>
+      </div>
+    <% }) %>
+  </div>
+  <% } %>
+
+</div>
+<%- include('../partials/admin-footer') %>

@@ -1,0 +1,231 @@
+<%- include('../partials/admin-header') %>
+
+<style>
+  .collect-wrap { max-width: 750px; margin: 0 auto; }
+  .collect-card { background: var(--card-bg, white); border-radius: 12px; border: 1px solid var(--border-color, #e2e8f0); padding: 24px; margin-bottom: 20px; }
+  .collect-title { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 6px; }
+  .check-info-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; padding: 14px; background: #fef3c7; border-radius: 8px; border: 1px solid #fcd34d; }
+  .check-info-item { display: flex; flex-direction: column; gap: 2px; }
+  .check-info-label { font-size: 11px; color: #92400e; font-weight: 700; }
+  .check-info-val { font-size: 14px; font-weight: 800; color: #78350f; }
+
+  .payment-rows-container { display: flex; flex-direction: column; gap: 12px; }
+  .payment-row {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px;
+    position: relative;
+  }
+  .payment-row-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .payment-row-title { font-size: 13px; font-weight: 700; color: #475569; }
+  .btn-remove-row { background: none; border: none; color: #dc2626; cursor: pointer; font-size: 16px; padding: 0; }
+  .row-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .check-extra { display: none; grid-column: 1 / -1; }
+  .check-extra.visible { display: contents; }
+  label.lbl { font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px; }
+  .form-input { width: 100%; padding: 7px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; font-family: inherit; }
+  .form-input:focus { outline: none; border-color: #6d28d9; }
+  select.form-input { cursor: pointer; }
+
+  .btn-add-row {
+    width: 100%; padding: 10px; border: 2px dashed #6d28d9; background: transparent;
+    border-radius: 8px; color: #6d28d9; font-weight: 700; font-size: 13px;
+    cursor: pointer; margin-top: 8px; transition: 0.15s; font-family: inherit;
+  }
+  .btn-add-row:hover { background: #ede9fe; }
+  .btn-save { background: #15803d; color: white; border: none; padding: 12px 32px; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .btn-save:hover { background: #166534; }
+  .btn-cancel { background: white; color: #64748b; border: 1px solid #e2e8f0; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; }
+  .total-bar { background: #1e293b; color: white; border-radius: 8px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+  .total-label { font-size: 13px; opacity: 0.7; }
+  .total-amount { font-size: 18px; font-weight: 800; }
+</style>
+
+<div class="collect-wrap">
+  <%- include('../partials/messages') %>
+
+  <div class="collect-card">
+    <div class="collect-title">💰 تحصيل الشيك المرتجع</div>
+    <div style="color:#64748b; font-size:13px; margin-bottom:16px;">أدخل طريقة أو أكثر لتحصيل قيمة الشيك المرتجع دفعة أو أكثر</div>
+
+    <!-- معلومات الشيك المرتجع -->
+    <div class="check-info-row">
+      <div class="check-info-item">
+        <span class="check-info-label">رقم الشيك</span>
+        <span class="check-info-val">#<%= check.checkNumber %></span>
+      </div>
+      <div class="check-info-item">
+        <span class="check-info-label">البنك</span>
+        <span class="check-info-val"><%= check.bankName %></span>
+      </div>
+      <div class="check-info-item">
+        <span class="check-info-label">الزبون (المرجع)</span>
+        <span class="check-info-val"><%= check.partyName %></span>
+      </div>
+      <div class="check-info-item">
+        <span class="check-info-label">قيمة الشيك المرتجع</span>
+        <span class="check-info-val"><%= check.amount.toLocaleString('ar-EG') %> ₪</span>
+      </div>
+      <div class="check-info-item">
+        <span class="check-info-label">تاريخ الاستحقاق</span>
+        <span class="check-info-val"><%= new Date(check.maturityDate).toLocaleDateString('ar-EG') %></span>
+      </div>
+    </div>
+
+    <% if (replacementCheck) { %>
+      <div style="background:#dcfce7; border:1px solid #86efac; border-radius:8px; padding:12px; margin-bottom:16px;">
+        <strong style="color:#166534;">✅ تم التحصيل مسبقاً</strong>
+        <p style="margin:4px 0 0; font-size:13px; color:#15803d;">
+          شيك بديل رقم #<%= replacementCheck.checkNumber %> (<%= replacementCheck.bankName %>) — <%= replacementCheck.amount.toLocaleString('ar-EG') %> ₪
+        </p>
+      </div>
+    <% } %>
+
+    <form method="POST" action="/admin/checks/collect/<%= check._id %>" id="collectForm">
+      <div class="payment-rows-container" id="rowsContainer">
+        <!-- دفعة أولى افتراضية -->
+        <div class="payment-row" id="row-0">
+          <div class="payment-row-header">
+            <span class="payment-row-title">دفعة #1</span>
+            <button type="button" class="btn-remove-row" onclick="removeRow(this)" title="حذف الدفعة">✕</button>
+          </div>
+          <div class="row-grid">
+            <div>
+              <label class="lbl">طريقة الدفع</label>
+              <select class="form-input method-select" name="methods" onchange="toggleCheckFields(this)">
+                <option value="cash">💵 نقدي</option>
+                <option value="check">📝 شيك جديد</option>
+                <option value="bank_transfer">🏦 تحويل بنكي</option>
+                <option value="card">💳 بطاقة</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl">المبلغ (₪)</label>
+              <input type="number" class="form-input amount-input" name="amounts" step="0.01" min="0.01" placeholder="0.00" required oninput="updateTotal()">
+            </div>
+            <!-- حقول الشيك الجديد (تظهر فقط عند اختيار شيك) -->
+            <div class="check-extra" id="check-extra-0">
+              <label class="lbl">رقم الشيك الجديد</label>
+              <input type="text" class="form-input" name="checkNumbers" placeholder="رقم الشيك">
+            </div>
+            <div class="check-extra" id="check-extra-bank-0">
+              <label class="lbl">اسم البنك</label>
+              <input type="text" class="form-input" name="bankNames" placeholder="اسم البنك">
+            </div>
+            <div class="check-extra" id="check-extra-recv-0">
+              <label class="lbl">تاريخ الاستلام</label>
+              <input type="date" class="form-input" name="receivedDates" value="<%= new Date().toISOString().slice(0,10) %>">
+            </div>
+            <div class="check-extra" id="check-extra-mat-0">
+              <label class="lbl">تاريخ الاستحقاق</label>
+              <input type="date" class="form-input" name="maturityDates">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn-add-row" onclick="addRow()">+ إضافة دفعة أخرى</button>
+
+      <div class="total-bar" style="margin-top:16px;">
+        <span class="total-label">الإجمالي المُحصَّل</span>
+        <span class="total-amount" id="totalAmount">0.00 ₪</span>
+      </div>
+
+      <div style="display:flex; gap:12px; margin-top:20px; justify-content:flex-end;">
+        <a href="/admin/checks" class="btn-cancel">إلغاء</a>
+        <button type="submit" class="btn-save">💾 حفظ عملية التحصيل</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  let rowCount = 1;
+
+  function addRow() {
+    rowCount++;
+    const idx = rowCount - 1;
+    const container = document.getElementById('rowsContainer');
+    const div = document.createElement('div');
+    div.className = 'payment-row';
+    div.id = `row-${idx}`;
+    div.innerHTML = `
+      <div class="payment-row-header">
+        <span class="payment-row-title">دفعة #${rowCount}</span>
+        <button type="button" class="btn-remove-row" onclick="removeRow(this)" title="حذف الدفعة">✕</button>
+      </div>
+      <div class="row-grid">
+        <div>
+          <label class="lbl">طريقة الدفع</label>
+          <select class="form-input method-select" name="methods" onchange="toggleCheckFields(this)">
+            <option value="cash">💵 نقدي</option>
+            <option value="check">📝 شيك جديد</option>
+            <option value="bank_transfer">🏦 تحويل بنكي</option>
+            <option value="card">💳 بطاقة</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">المبلغ (₪)</label>
+          <input type="number" class="form-input amount-input" name="amounts" step="0.01" min="0.01" placeholder="0.00" required oninput="updateTotal()">
+        </div>
+        <div class="check-extra" id="check-extra-${idx}">
+          <label class="lbl">رقم الشيك الجديد</label>
+          <input type="text" class="form-input" name="checkNumbers" placeholder="رقم الشيك">
+        </div>
+        <div class="check-extra" id="check-extra-bank-${idx}">
+          <label class="lbl">اسم البنك</label>
+          <input type="text" class="form-input" name="bankNames" placeholder="اسم البنك">
+        </div>
+        <div class="check-extra" id="check-extra-recv-${idx}">
+          <label class="lbl">تاريخ الاستلام</label>
+          <input type="date" class="form-input" name="receivedDates" value="${new Date().toISOString().slice(0,10)}">
+        </div>
+        <div class="check-extra" id="check-extra-mat-${idx}">
+          <label class="lbl">تاريخ الاستحقاق</label>
+          <input type="date" class="form-input" name="maturityDates">
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+    updateRowTitles();
+  }
+
+  function removeRow(btn) {
+    const rows = document.querySelectorAll('.payment-row');
+    if (rows.length <= 1) { alert('يجب أن تكون هناك دفعة واحدة على الأقل'); return; }
+    btn.closest('.payment-row').remove();
+    updateRowTitles();
+    updateTotal();
+  }
+
+  function updateRowTitles() {
+    document.querySelectorAll('.payment-row').forEach((row, i) => {
+      const title = row.querySelector('.payment-row-title');
+      if (title) title.textContent = `دفعة #${i + 1}`;
+    });
+  }
+
+  function toggleCheckFields(select) {
+    const row = select.closest('.payment-row');
+    const extras = row.querySelectorAll('.check-extra');
+    const isCheck = select.value === 'check';
+    extras.forEach(el => {
+      el.style.display = isCheck ? 'block' : 'none';
+    });
+  }
+
+  function updateTotal() {
+    let total = 0;
+    document.querySelectorAll('.amount-input').forEach(input => {
+      total += parseFloat(input.value) || 0;
+    });
+    document.getElementById('totalAmount').textContent = total.toLocaleString('ar-EG', { minimumFractionDigits: 2 }) + ' ₪';
+  }
+
+  // تهيئة الصف الأول
+  document.addEventListener('DOMContentLoaded', () => {
+    const firstSelect = document.querySelector('.method-select');
+    if (firstSelect) toggleCheckFields(firstSelect);
+  });
+</script>
+
+<%- include('../partials/admin-footer') %>

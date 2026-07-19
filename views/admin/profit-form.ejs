@@ -1,0 +1,194 @@
+<%- include('../partials/admin-header') %>
+<%
+  const isEdit = !!profit;
+  const src = isEdit ? profit : invoice;
+  const items = isEdit ? profit.items : invoice.items.map(it => ({ ...it, unitCost: 0 }));
+%>
+<style>
+  .inv-form-wrap { max-width: 1100px; margin: 0 auto; }
+  .form-section {
+    background: var(--card-bg, white); border-radius: 14px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    padding: 22px 26px; margin-bottom: 20px;
+  }
+  .form-section h5 {
+    font-size: 15px; font-weight: 800; color: var(--text-main, #1e293b);
+    border-bottom: 2px solid var(--border-color, #e2e8f0);
+    padding-bottom: 10px; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .readonly-field {
+    background: var(--table-hover, #f8fafc);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px; padding: 6px 10px; font-weight: 700; text-align: center;
+  }
+  .cost-input {
+    border: 2px solid #d4af37 !important;
+    background: rgba(212,175,55,0.06) !important;
+    font-weight: 800;
+  }
+  .profit-table th, .profit-table td { text-align: center; vertical-align: middle; font-size: 13px; }
+  .total-bar {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    border-radius: 12px; padding: 18px 24px; color: white; margin-top: 16px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap; justify-content: center;
+  }
+  .total-bar .tb-item { display: flex; flex-direction: column; align-items: center; }
+  .total-bar .tb-lbl { font-size: 12px; color: #94a3b8; }
+  .total-bar .tb-val { font-size: 22px; font-weight: 800; color: #d4af37; }
+</style>
+
+<div class="inv-form-wrap">
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+  <h2 class="section-title mb-0">
+    <i class="fa-solid fa-sack-dollar"></i>
+    <%= isEdit ? 'تعديل أرباح فاتورة ' + src.invoiceNumber : 'سجل أرباح جديد - فاتورة ' + src.invoiceNumber %>
+  </h2>
+  <a href="/admin/profits" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-right"></i> رجوع للأرباح
+  </a>
+</div>
+
+<div class="alert alert-warning" style="border-radius:10px;">
+  <i class="fa-solid fa-triangle-exclamation"></i>
+  جميع بيانات الفاتورة (العميل، الأصناف، الكميات، الأسعار) مأخوذة مباشرة من الفاتورة الأصلية ولا يمكن تعديلها هنا.
+  العمود الوحيد القابل للتعديل هو <strong>تكلفة الوحدة</strong>.
+</div>
+
+<form action="<%= isEdit ? '/admin/profits/edit/' + profit._id : '/admin/profits/create/' + invoice._id %>" method="POST" id="profitForm">
+
+  <div class="form-section">
+    <h5><i class="fa-solid fa-file-invoice" style="color:#d4af37;"></i> بيانات الفاتورة</h5>
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label fw-bold" style="font-size:12px;">رقم الفاتورة</label>
+        <div class="readonly-field"><%= src.invoiceNumber %></div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold" style="font-size:12px;">اسم العميل</label>
+        <div class="readonly-field"><%= src.partyName %></div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-bold" style="font-size:12px;">التاريخ</label>
+        <div class="readonly-field"><%= new Date(src.invoiceDate).toLocaleDateString('ar-EG') %></div>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-bold" style="font-size:12px;">إجمالي الفاتورة</label>
+        <div class="readonly-field text-danger"><%= (isEdit ? src.totalSale : invoice.totalAmount).toLocaleString('ar-EG') %> ₪</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h5><i class="fa-solid fa-list-check" style="color:#d4af37;"></i> الأصناف والتكلفة</h5>
+    <div class="table-responsive-wrap">
+      <table class="table table-luxury profit-table" id="itemsTable">
+        <thead>
+          <tr>
+            <th>الصنف</th>
+            <th>الكمية</th>
+            <th>الوحدة</th>
+            <th>سعر البيع</th>
+            <th>إجمالي البيع</th>
+            <th style="background:rgba(212,175,55,0.15);">تكلفة الوحدة</th>
+            <th>إجمالي التكلفة</th>
+            <th>الربح</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach((it, idx) => { %>
+            <tr class="item-row" data-qty="<%= it.quantity %>" data-total="<%= it.total %>">
+              <td class="fw-bold" style="text-align:right;"><%= it.description %></td>
+              <td>
+                <% if(it.quantityType === 'sqmeter') { %>
+                  <%= it.length %>×<%= it.width %> = <%= it.quantity.toFixed(2) %> م²
+                <% } else if(it.quantityType === 'meter') { %>
+                  <%= it.quantity.toFixed(2) %> م
+                <% } else { %>
+                  <%= it.quantity %>
+                <% } %>
+              </td>
+              <td>
+                <%= it.quantityType==='piece'?'عدد':it.quantityType==='meter'?'متر':'م²' %>
+              </td>
+              <td><%= it.unitPrice.toLocaleString('ar-EG') %> ₪</td>
+              <td class="fw-bold text-danger item-total-cell"><%= it.total.toLocaleString('ar-EG') %> ₪</td>
+              <td>
+                <input type="number" class="form-control cost-input item-unit-cost" min="0" step="any"
+                       value="<%= it.unitCost || 0 %>" oninput="calcRow(this.closest('.item-row'))">
+              </td>
+              <td class="fw-bold item-cost-cell" style="color:#d97706;">0 ₪</td>
+              <td class="fw-bold item-profit-cell" style="color:#16a34a;">0 ₪</td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="row g-3 mt-2">
+      <div class="col-12">
+        <label class="form-label fw-bold">ملاحظات (اختياري)</label>
+        <textarea name="notes" class="form-control" rows="2"><%= isEdit ? (profit.notes || '') : '' %></textarea>
+      </div>
+    </div>
+
+    <div class="total-bar">
+      <div class="tb-item"><span class="tb-lbl">إجمالي البيع</span><span class="tb-val" id="sumSale">0</span></div>
+      <div class="tb-item"><span class="tb-lbl">إجمالي التكلفة</span><span class="tb-val" id="sumCost" style="color:#d97706;">0</span></div>
+      <div class="tb-item"><span class="tb-lbl">صافي الربح</span><span class="tb-val" id="sumProfit" style="color:#16a34a;">0</span></div>
+      <div class="tb-item"><span class="tb-lbl">نسبة الربح</span><span class="tb-val" id="sumMargin" style="color:#3b82f6;">0%</span></div>
+    </div>
+  </div>
+
+  <input type="hidden" name="unitCosts" id="unitCostsInput">
+
+  <div class="d-flex gap-3 mb-5">
+    <button type="submit" class="btn btn-gold px-5" style="font-size:16px;padding:12px 40px;">
+      <i class="fa-solid fa-floppy-disk"></i> حفظ
+    </button>
+    <a href="/admin/profits" class="btn btn-outline-secondary px-4">إلغاء</a>
+  </div>
+
+</form>
+</div>
+
+<script>
+function calcRow(row) {
+  const qty = parseFloat(row.dataset.qty) || 0;
+  const total = parseFloat(row.dataset.total) || 0;
+  const unitCost = parseFloat(row.querySelector('.item-unit-cost').value) || 0;
+  const totalCost = qty * unitCost;
+  const profit = total - totalCost;
+  row.querySelector('.item-cost-cell').textContent = totalCost.toLocaleString('ar-EG', {maximumFractionDigits:2}) + ' ₪';
+  row.querySelector('.item-profit-cell').textContent = profit.toLocaleString('ar-EG', {maximumFractionDigits:2}) + ' ₪';
+  row.querySelector('.item-profit-cell').style.color = profit >= 0 ? '#16a34a' : '#dc2626';
+  calcTotals();
+}
+
+function calcTotals() {
+  let sumSale = 0, sumCost = 0;
+  document.querySelectorAll('.item-row').forEach(row => {
+    sumSale += parseFloat(row.dataset.total) || 0;
+    const qty = parseFloat(row.dataset.qty) || 0;
+    const unitCost = parseFloat(row.querySelector('.item-unit-cost').value) || 0;
+    sumCost += qty * unitCost;
+  });
+  const sumProfit = sumSale - sumCost;
+  const margin = sumSale > 0 ? (sumProfit / sumSale * 100) : 0;
+  document.getElementById('sumSale').textContent = sumSale.toLocaleString('ar-EG', {maximumFractionDigits:2});
+  document.getElementById('sumCost').textContent = sumCost.toLocaleString('ar-EG', {maximumFractionDigits:2});
+  document.getElementById('sumProfit').textContent = sumProfit.toLocaleString('ar-EG', {maximumFractionDigits:2});
+  document.getElementById('sumProfit').style.color = sumProfit >= 0 ? '#16a34a' : '#ef4444';
+  document.getElementById('sumMargin').textContent = margin.toFixed(1) + '%';
+}
+
+document.getElementById('profitForm').addEventListener('submit', function(e) {
+  const costs = [];
+  document.querySelectorAll('.item-unit-cost').forEach(inp => costs.push(parseFloat(inp.value) || 0));
+  document.getElementById('unitCostsInput').value = JSON.stringify(costs);
+});
+
+document.querySelectorAll('.item-row').forEach(row => calcRow(row));
+</script>
+
+<%- include('../partials/admin-footer') %>

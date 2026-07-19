@@ -1,0 +1,202 @@
+<%- include('../partials/admin-header') %>
+
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+  <h2 class="section-title mb-0">
+    <i class="fa-solid fa-sack-dollar"></i> الأرباح
+  </h2>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="/admin/profits/select-invoice" class="btn btn-gold">
+      <i class="fa-solid fa-plus"></i> إضافة فاتورة
+    </a>
+  </div>
+</div>
+
+<!-- بحث وفلترة -->
+<div class="filter-bar mb-3">
+  <form method="GET" action="/admin/profits" class="row g-2 align-items-end">
+    <div class="col-6 col-md-3">
+      <label class="form-label fw-bold" style="font-size:12px;"><i class="fa-solid fa-magnifying-glass"></i> بحث</label>
+      <input type="text" name="q" class="form-control" placeholder="رقم الفاتورة أو اسم العميل" value="<%= query.q %>">
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label fw-bold" style="font-size:12px;"><i class="fa-solid fa-calendar"></i> من تاريخ</label>
+      <input type="date" name="dateFrom" class="form-control" value="<%= query.dateFrom %>">
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label fw-bold" style="font-size:12px;">إلى تاريخ</label>
+      <input type="date" name="dateTo" class="form-control" value="<%= query.dateTo %>">
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label fw-bold" style="font-size:12px;">حالة الربح</label>
+      <select name="status" class="form-select">
+        <option value="" <%= query.status==='' ? 'selected':'' %>>الكل</option>
+        <option value="profit" <%= query.status==='profit' ? 'selected':'' %>>ربح</option>
+        <option value="loss" <%= query.status==='loss' ? 'selected':'' %>>خسارة</option>
+        <option value="even" <%= query.status==='even' ? 'selected':'' %>>تعادل</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary flex-fill"><i class="fa-solid fa-filter"></i> تصفية</button>
+      <a href="/admin/profits" class="btn btn-outline-secondary" title="إعادة تعيين"><i class="fa-solid fa-rotate-left"></i></a>
+    </div>
+  </form>
+</div>
+
+<!-- إحصائيات -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="fw-bold" style="font-size:13px; color:var(--text-muted);">عدد السجلات</div>
+      <div class="fw-bold" style="font-size:22px; color:var(--primary-gold);"><%= stats.count %></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="fw-bold" style="font-size:13px; color:var(--text-muted);">إجمالي المبيعات</div>
+      <div class="fw-bold text-danger" style="font-size:18px;"><%= stats.totalSale.toLocaleString('ar-EG') %> ₪</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="fw-bold" style="font-size:13px; color:var(--text-muted);">إجمالي التكلفة</div>
+      <div class="fw-bold" style="font-size:18px; color:#d97706;"><%= stats.totalCost.toLocaleString('ar-EG') %> ₪</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="fw-bold" style="font-size:13px; color:var(--text-muted);">صافي الربح</div>
+      <div class="fw-bold" style="font-size:18px; color:<%= stats.netProfit >= 0 ? '#16a34a' : '#dc2626' %>;"><%= stats.netProfit.toLocaleString('ar-EG') %> ₪</div>
+    </div>
+  </div>
+</div>
+
+<% if (profits.length === 0) { %>
+  <div class="text-center py-5" style="background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border-color);">
+    <i class="fa-solid fa-sack-dollar fa-3x mb-3" style="color: var(--primary-gold);"></i>
+    <h5 style="color: var(--text-muted);">لا توجد سجلات أرباح بعد</h5>
+    <a href="/admin/profits/select-invoice" class="btn btn-gold mt-2">
+      <i class="fa-solid fa-plus"></i> إضافة أول سجل أرباح
+    </a>
+  </div>
+<% } else { %>
+
+<!-- Desktop Table -->
+<div class="table-responsive-wrap d-none d-md-block">
+  <table class="table table-luxury align-middle mb-0">
+    <thead>
+      <tr>
+        <th>رقم الفاتورة</th>
+        <th>العميل</th>
+        <th>التاريخ</th>
+        <th>إجمالي البيع</th>
+        <th>إجمالي التكلفة</th>
+        <th>صافي الربح</th>
+        <th>نسبة الربح</th>
+        <th>الحالة</th>
+        <th>الإجراءات</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% profits.forEach(p => {
+        const st = p.netProfit > 0 ? 'profit' : (p.netProfit < 0 ? 'loss' : 'even');
+      %>
+        <tr>
+          <td><span class="badge-luxury"><%= p.invoiceNumber %></span></td>
+          <td class="fw-bold"><%= p.partyName %></td>
+          <td style="font-size:13px; white-space:nowrap;">
+            <%= new Date(p.invoiceDate).toLocaleDateString('ar-EG', {year:'numeric',month:'2-digit',day:'2-digit'}) %>
+          </td>
+          <td class="fw-bold text-danger"><%= p.totalSale.toLocaleString('ar-EG') %></td>
+          <td class="fw-bold" style="color:#d97706;"><%= p.totalCost.toLocaleString('ar-EG') %></td>
+          <td class="fw-bold" style="color:<%= p.netProfit >= 0 ? '#16a34a' : '#dc2626' %>;"><%= p.netProfit.toLocaleString('ar-EG') %></td>
+          <td class="fw-bold"><%= p.profitMargin.toFixed(1) %>%</td>
+          <td>
+            <span class="badge bg-<%= st==='profit' ? 'success' : st==='loss' ? 'danger' : 'secondary' %> rounded-pill">
+              <%= st==='profit' ? 'ربح' : st==='loss' ? 'خسارة' : 'تعادل' %>
+            </span>
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="/admin/profits/view/<%= p._id %>" class="btn btn-sm btn-outline-primary" title="معاينة">
+                <i class="fa-solid fa-eye"></i>
+              </a>
+              <a href="/admin/profits/edit/<%= p._id %>" class="btn btn-sm btn-outline-warning" title="تعديل">
+                <i class="fa-solid fa-pen"></i>
+              </a>
+              <a href="/admin/profits/print/<%= p._id %>" target="_blank" class="btn btn-sm btn-outline-dark" title="طباعة">
+                <i class="fa-solid fa-print"></i>
+              </a>
+              <form action="/admin/profits/delete/<%= p._id %>" method="POST" style="display:inline;"
+                    onsubmit="return confirm('هل أنت متأكد من حذف سجل أرباح الفاتورة <%= p.invoiceNumber %>؟\nلن تتأثر الفاتورة الأصلية.')">
+                <button type="submit" class="btn btn-sm btn-danger" title="حذف">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<!-- Mobile Cards -->
+<div class="d-md-none">
+  <% profits.forEach(p => {
+    const st = p.netProfit > 0 ? 'profit' : (p.netProfit < 0 ? 'loss' : 'even');
+  %>
+    <div class="invoice-card">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <span class="badge-luxury"><%= p.invoiceNumber %></span>
+        <span class="badge bg-<%= st==='profit' ? 'success' : st==='loss' ? 'danger' : 'secondary' %> rounded-pill">
+          <%= st==='profit' ? 'ربح' : st==='loss' ? 'خسارة' : 'تعادل' %>
+        </span>
+      </div>
+      <h6 class="fw-bold mb-1"><%= p.partyName %></h6>
+      <div class="d-flex gap-3 mb-2" style="font-size:13px; color: var(--text-muted);">
+        <span><i class="fa-solid fa-calendar-alt me-1"></i><%= new Date(p.invoiceDate).toLocaleDateString('ar-EG') %></span>
+      </div>
+      <div class="row g-2 text-center mb-2">
+        <div class="col-4">
+          <div style="background: rgba(220,38,38,0.08); border-radius:8px; padding:8px;">
+            <div style="font-size:11px; color:var(--text-muted);">البيع</div>
+            <div class="fw-bold text-danger" style="font-size:14px;"><%= p.totalSale.toLocaleString('ar-EG') %></div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div style="background: rgba(217,119,6,0.08); border-radius:8px; padding:8px;">
+            <div style="font-size:11px; color:var(--text-muted);">التكلفة</div>
+            <div class="fw-bold" style="font-size:14px; color:#d97706;"><%= p.totalCost.toLocaleString('ar-EG') %></div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div style="background: rgba(22,163,74,0.08); border-radius:8px; padding:8px;">
+            <div style="font-size:11px; color:var(--text-muted);">الربح</div>
+            <div class="fw-bold" style="font-size:14px; color:<%= p.netProfit >= 0 ? '#16a34a' : '#dc2626' %>;"><%= p.netProfit.toLocaleString('ar-EG') %></div>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex gap-2 justify-content-end flex-wrap">
+        <a href="/admin/profits/view/<%= p._id %>" class="btn btn-sm btn-outline-primary">
+          <i class="fa-solid fa-eye me-1"></i> معاينة
+        </a>
+        <a href="/admin/profits/edit/<%= p._id %>" class="btn btn-sm btn-outline-warning">
+          <i class="fa-solid fa-pen me-1"></i> تعديل
+        </a>
+        <a href="/admin/profits/print/<%= p._id %>" target="_blank" class="btn btn-sm btn-outline-dark">
+          <i class="fa-solid fa-print me-1"></i> طباعة
+        </a>
+        <form action="/admin/profits/delete/<%= p._id %>" method="POST"
+              onsubmit="return confirm('حذف سجل أرباح الفاتورة <%= p.invoiceNumber %>؟')">
+          <button type="submit" class="btn btn-sm btn-danger">
+            <i class="fa-solid fa-trash me-1"></i> حذف
+          </button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<% } %>
+
+<%- include('../partials/admin-footer') %>

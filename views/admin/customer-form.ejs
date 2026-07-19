@@ -1,0 +1,13 @@
+<%- include('../partials/admin-header') %>
+<h2 class="section-title"><i class="fa-solid fa-user-plus"></i> <%= customer._id ? 'تعديل بيانات' : 'إضافة' %> زبون</h2>
+<div class="card p-4 shadow-sm" style="border-radius: 16px;">
+  <form action="<%= customer._id ? '/admin/customers/edit/' + customer._id : '/admin/customers/add' %>" method="POST">
+    <div class="row g-3">
+      <div class="col-md-6"><label class="form-label fw-bold">الاسم الكامل</label><input name="fullName" class="form-control" value="<%= customer.fullName || '' %>" required></div>
+      <div class="col-md-6"><label class="form-label fw-bold">رقم الهاتف</label><input name="phone" class="form-control" value="<%= customer.phone || '' %>" required></div>
+      <div class="col-md-12"><label class="form-label fw-bold">العنوان</label><input name="address" class="form-control" value="<%= customer.address || '' %>"></div>
+    </div>
+    <button type="submit" class="btn btn-gold mt-4"><i class="fa-solid fa-save"></i> حفظ البيانات</button>
+  </form>
+</div>
+<%- include('../partials/admin-footer') %>

@@ -1,0 +1,394 @@
+<%- include('../partials/admin-header') %>
+
+<%
+  const currency = settings.currency || '₪';
+  function trendClass(n){ return n > 0 ? 'up' : n < 0 ? 'down' : 'flat'; }
+  function trendIcon(n)  { return n > 0 ? '↑' : n < 0 ? '↓' : '—'; }
+  function timeAgo(date){
+    if(!date) return '';
+    const diff = Math.floor((Date.now() - new Date(date)) / 60000);
+    if(diff < 1)  return 'الآن';
+    if(diff < 60) return `منذ ${diff} دقيقة`;
+    const h = Math.floor(diff/60);
+    if(h < 24)    return `منذ ${h} ساعة`;
+    return `منذ ${Math.floor(h/24)} يوم`;
+  }
+  function fmt(n){ return (n||0).toLocaleString('en'); }
+  function shortDate(d){
+    if(!d) return '—';
+    const dd = new Date(d);
+    return dd.toLocaleDateString('ar-SA',{day:'2-digit',month:'2-digit',year:'numeric'});
+  }
+%>
+
+<!-- ═══════════════ WELCOME BANNER ═══════════════ -->
+<div class="db-welcome">
+  <div>
+    <h1 class="db-greeting">مرحباً 👋 مدير النظام</h1>
+    <p class="db-sub">إليك نظرة عامة على نشاط <%= settings.storeName || 'المعرض' %> اليوم</p>
+  </div>
+  <div class="db-welcome-actions">
+    <div class="db-date-badge">
+      <i class="fa-solid fa-calendar-days"></i>
+      <span id="todayDate"></span>
+    </div>
+    <a href="/admin/global-balances" class="db-export-btn">
+      <i class="fa-solid fa-download"></i> تصدير التقرير
+    </a>
+  </div>
+</div>
+
+<!-- ═══════════════ KPI CARDS ═══════════════ -->
+<div class="db-kpi-grid">
+
+  <div class="db-kpi" style="--kc:#6366f1;">
+    <div class="db-kpi-top">
+      <div class="db-kpi-icon" style="background:rgba(99,102,241,.12);"><i class="fa-solid fa-users" style="color:#6366f1;"></i></div>
+      <span class="db-kpi-badge <%= trendClass(trends.customers) %>"><%= trendIcon(trends.customers) %>&nbsp;<%= Math.abs(trends.customers) %>%</span>
+    </div>
+    <div class="db-kpi-val"><%= fmt(counts.customers) %></div>
+    <div class="db-kpi-lbl">الزبائن المسجلين</div>
+    <div class="db-kpi-foot">عن الشهر الماضي</div>
+    <svg class="db-spark" viewBox="0 0 120 36" preserveAspectRatio="none">
+      <polyline points="0,30 20,22 40,26 60,14 80,18 100,8 120,12" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round"/>
+      <polyline points="0,30 20,22 40,26 60,14 80,18 100,8 120,12 120,36 0,36" fill="rgba(99,102,241,.10)" stroke="none"/>
+    </svg>
+  </div>
+
+  <div class="db-kpi" style="--kc:#f59e0b;">
+    <div class="db-kpi-top">
+      <div class="db-kpi-icon" style="background:rgba(245,158,11,.12);"><i class="fa-solid fa-file-invoice-dollar" style="color:#f59e0b;"></i></div>
+      <span class="db-kpi-badge <%= trendClass(trends.invoices) %>"><%= trendIcon(trends.invoices) %>&nbsp;<%= Math.abs(trends.invoices) %>%</span>
+    </div>
+    <div class="db-kpi-val"><%= fmt(counts.invoices) %></div>
+    <div class="db-kpi-lbl">الفواتير الصادرة</div>
+    <div class="db-kpi-foot">عن الشهر الماضي</div>
+    <svg class="db-spark" viewBox="0 0 120 36" preserveAspectRatio="none">
+      <polyline points="0,32 20,24 40,28 60,16 80,20 100,8 120,4" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+      <polyline points="0,32 20,24 40,28 60,16 80,20 100,8 120,4 120,36 0,36" fill="rgba(245,158,11,.10)" stroke="none"/>
+    </svg>
+  </div>
+
+  <div class="db-kpi" style="--kc:#10b981;">
+    <div class="db-kpi-top">
+      <div class="db-kpi-icon" style="background:rgba(16,185,129,.12);"><i class="fa-solid fa-money-bill-transfer" style="color:#10b981;"></i></div>
+      <span class="db-kpi-badge <%= trendClass(trends.payments) %>"><%= trendIcon(trends.payments) %>&nbsp;<%= Math.abs(trends.payments) %>%</span>
+    </div>
+    <div class="db-kpi-val"><%= fmt(counts.payments) %></div>
+    <div class="db-kpi-lbl">المدفوعات المسجلة</div>
+    <div class="db-kpi-foot">عن الشهر الماضي</div>
+    <svg class="db-spark" viewBox="0 0 120 36" preserveAspectRatio="none">
+      <polyline points="0,28 20,20 40,24 60,12 80,16 100,6 120,10" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+      <polyline points="0,28 20,20 40,24 60,12 80,16 100,6 120,10 120,36 0,36" fill="rgba(16,185,129,.10)" stroke="none"/>
+    </svg>
+  </div>
+
+  <div class="db-kpi" style="--kc:#06b6d4;">
+    <div class="db-kpi-top">
+      <div class="db-kpi-icon" style="background:rgba(6,182,212,.12);"><i class="fa-solid fa-handshake" style="color:#06b6d4;"></i></div>
+      <span class="db-kpi-badge flat">— ثابت</span>
+    </div>
+    <div class="db-kpi-val"><%= fmt(counts.dealers) %></div>
+    <div class="db-kpi-lbl">التجار المعتمدين</div>
+    <div class="db-kpi-foot">إجمالي</div>
+    <svg class="db-spark" viewBox="0 0 120 36" preserveAspectRatio="none">
+      <polyline points="0,20 20,22 40,18 60,20 80,16 100,18 120,16" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+      <polyline points="0,20 20,22 40,18 60,20 80,16 100,18 120,16 120,36 0,36" fill="rgba(6,182,212,.10)" stroke="none"/>
+    </svg>
+  </div>
+
+  <div class="db-kpi" style="--kc:#ef4444;">
+    <div class="db-kpi-top">
+      <div class="db-kpi-icon" style="background:rgba(239,68,68,.12);"><i class="fa-solid fa-money-check-dollar" style="color:#ef4444;"></i></div>
+      <span class="db-kpi-badge flat">— نشط</span>
+    </div>
+    <div class="db-kpi-val"><%= fmt(counts.checks) %></div>
+    <div class="db-kpi-lbl">الشيكات النشطة</div>
+    <div class="db-kpi-foot">إجمالي</div>
+    <svg class="db-spark" viewBox="0 0 120 36" preserveAspectRatio="none">
+      <polyline points="0,18 20,24 40,14 60,20 80,10 100,16 120,8" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+      <polyline points="0,18 20,24 40,14 60,20 80,10 100,16 120,8 120,36 0,36" fill="rgba(239,68,68,.10)" stroke="none"/>
+    </svg>
+  </div>
+
+</div>
+
+<!-- ═══════════════ ROW 2 ═══════════════ -->
+<div class="row g-3 mb-3">
+
+  <!-- أحدث العمليات -->
+  <div class="col-xl-4">
+    <div class="db-panel h-100">
+      <div class="db-panel-hdr">
+        <span class="db-panel-title"><i class="fa-solid fa-clock-rotate-left"></i> أحدث العمليات</span>
+        <a href="/admin/invoices" class="db-panel-lnk">عرض الكل</a>
+      </div>
+      <% if(recentInvoices.length === 0 && recentPayments.length === 0){ %>
+        <div class="db-empty"><i class="fa-solid fa-inbox"></i><br>لا توجد عمليات حديثة</div>
+      <% } %>
+      <% recentInvoices.forEach(inv => { %>
+      <div class="db-act-item">
+        <div class="db-act-ico" style="background:rgba(245,158,11,.12);color:#f59e0b;">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+        </div>
+        <div class="db-act-body">
+          <div class="db-act-name">فاتورة جديدة</div>
+          <div class="db-act-ref"><%= inv.invoiceNumber || '#—' %></div>
+        </div>
+        <div class="db-act-time"><%= timeAgo(inv.createdAt) %></div>
+      </div>
+      <% }); %>
+      <% recentPayments.forEach(pay => { %>
+      <div class="db-act-item">
+        <div class="db-act-ico" style="background:rgba(16,185,129,.12);color:#10b981;">
+          <i class="fa-solid fa-money-bill-transfer"></i>
+        </div>
+        <div class="db-act-body">
+          <div class="db-act-name">دفعة جديدة</div>
+          <div class="db-act-ref"><%= pay.partyName || '—' %></div>
+        </div>
+        <div class="db-act-time"><%= timeAgo(pay.createdAt) %></div>
+      </div>
+      <% }); %>
+    </div>
+  </div>
+
+  <!-- الرسم البياني -->
+  <div class="col-xl-5">
+    <div class="db-panel h-100">
+      <div class="db-panel-hdr">
+        <span class="db-panel-title"><i class="fa-solid fa-chart-line"></i> الفواتير خلال آخر 7 أيام</span>
+        <span class="db-tag">أسبوعي</span>
+      </div>
+      <div class="db-panel-body">
+        <canvas id="salesChart" height="175"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- إجراءات سريعة -->
+  <div class="col-xl-3">
+    <div class="db-panel h-100">
+      <div class="db-panel-hdr">
+        <span class="db-panel-title"><i class="fa-solid fa-bolt"></i> إجراءات سريعة</span>
+      </div>
+      <div class="db-panel-body">
+        <div class="db-quick-grid">
+          <a href="/admin/invoices/add"  class="db-qbtn" style="--qc:#6366f1;"><i class="fa-solid fa-file-invoice-dollar"></i><span>فاتورة</span></a>
+          <a href="/admin/customers/add" class="db-qbtn" style="--qc:#10b981;"><i class="fa-solid fa-user-plus"></i><span>زبون جديد</span></a>
+          <a href="/admin/payments/add"  class="db-qbtn" style="--qc:#f59e0b;"><i class="fa-solid fa-money-bill-transfer"></i><span>دفعة</span></a>
+          <a href="/admin/checks"        class="db-qbtn" style="--qc:#ef4444;"><i class="fa-solid fa-money-check-dollar"></i><span>شيك</span></a>
+          <a href="/admin/dealers/add"   class="db-qbtn" style="--qc:#06b6d4;"><i class="fa-solid fa-handshake"></i><span>تاجر جديد</span></a>
+          <a href="/admin/sales/add"     class="db-qbtn" style="--qc:#8b5cf6;"><i class="fa-solid fa-cash-register"></i><span>بيع جديد</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ ROW 3 ═══════════════ -->
+<div class="row g-3">
+
+  <!-- التنبيهات -->
+  <div class="col-xl-4">
+    <div class="db-panel h-100">
+      <div class="db-panel-hdr">
+        <span class="db-panel-title"><i class="fa-solid fa-bell"></i> التنبيهات</span>
+        <% const totalAlerts = invoiceStatuses.unpaid + invoiceStatuses.partial + upcomingChecks.length; %>
+        <% if(totalAlerts > 0){ %><span class="db-badge-red"><%= totalAlerts %></span><% } %>
+      </div>
+
+      <% if(invoiceStatuses.unpaid > 0){ %>
+      <div class="db-alert-row db-alert-danger">
+        <div class="db-alert-ico"><i class="fa-solid fa-file-invoice"></i></div>
+        <div class="db-alert-body">
+          <div class="db-alert-title">فواتير مستحقة</div>
+          <div class="db-alert-sub"><%= invoiceStatuses.unpaid %> فاتورة غير مدفوعة</div>
+        </div>
+        <a href="/admin/invoices" class="db-alert-btn">عرض</a>
+      </div>
+      <% } %>
+
+      <% if(invoiceStatuses.partial > 0){ %>
+      <div class="db-alert-row db-alert-warning">
+        <div class="db-alert-ico"><i class="fa-solid fa-circle-half-stroke"></i></div>
+        <div class="db-alert-body">
+          <div class="db-alert-title">مدفوعة جزئياً</div>
+          <div class="db-alert-sub"><%= invoiceStatuses.partial %> فاتورة مدفوعة جزئياً</div>
+        </div>
+        <a href="/admin/invoices" class="db-alert-btn">عرض</a>
+      </div>
+      <% } %>
+
+      <% if(upcomingChecks.length > 0){ %>
+      <div class="db-alert-row db-alert-info">
+        <div class="db-alert-ico"><i class="fa-solid fa-clock"></i></div>
+        <div class="db-alert-body">
+          <div class="db-alert-title">شيكات قادمة</div>
+          <div class="db-alert-sub"><%= upcomingChecks.length %> شيك في انتظار الصرف</div>
+        </div>
+        <a href="/admin/checks" class="db-alert-btn">عرض</a>
+      </div>
+      <% } %>
+
+      <% if(totalAlerts === 0){ %>
+        <div class="db-empty">
+          <i class="fa-solid fa-circle-check" style="color:#10b981; font-size:32px; margin-bottom:10px;"></i><br>
+          لا توجد تنبيهات حالياً
+        </div>
+      <% } %>
+
+      <div style="padding:12px 16px; border-top:1px solid var(--border); margin-top:auto;">
+        <a href="/admin/global-balances" class="btn-gold w-100 justify-content-center" style="font-size:13px; display:flex; align-items:center; gap:6px; padding:9px 0;">
+          <i class="fa-solid fa-scale-balanced"></i> الأرصدة العامة
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- الشيكات القادمة -->
+  <div class="col-xl-4">
+    <div class="db-panel h-100">
+      <div class="db-panel-hdr">
+        <span class="db-panel-title"><i class="fa-solid fa-money-check-dollar"></i> الشيكات القادمة</span>
+        <a href="/admin/checks" class="db-panel-lnk">عرض الكل</a>
+      </div>
+      <% if(upcomingChecks.length === 0){ %>
+        <div class="db-empty">
+          <i class="fa-solid fa-check-circle" style="color:#10b981; font-size:32px; margin-bottom:10px;"></i><br>
+          لا توجد شيكات معلقة
+        </div>
+      <% } else { %>
+        <% upcomingChecks.forEach(chk => { %>
+        <div class="db-chk-row">
+          <div>
+            <div class="db-chk-name"><%= chk.partyName || '—' %></div>
+            <div class="db-chk-ref">#<%= chk.checkNumber %> · <%= chk.bankName %></div>
+          </div>
+          <div style="text-align:left;">
+            <div class="db-chk-amount"><%= fmt(chk.amount) %> <%= currency %></div>
+            <div class="db-chk-date"><%= shortDate(chk.maturityDate) %></div>
+          </div>
+        </div>
+        <% }); %>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- حالة الفواتير -->
+  <div class="col-xl-4">
+    <div class="db-panel h-100">
+      <div class="db-panel-hdr">
+        <span class="db-panel-title"><i class="fa-solid fa-chart-pie"></i> حالة الفواتير</span>
+        <span style="font-size:12px; color:var(--text-2);">إجمالي: <%= counts.invoices %></span>
+      </div>
+      <div class="db-panel-body">
+        <%
+          const totalInv = counts.invoices || 1;
+          const unp  = Math.round((invoiceStatuses.unpaid  / totalInv) * 100);
+          const par  = Math.round((invoiceStatuses.partial / totalInv) * 100);
+          const paid = 100 - unp - par;
+          const R = 46, CX = 60, CY = 60, CIRC = 2 * Math.PI * R;
+          const segs = [
+            { p: unp/100,  c: '#ef4444' },
+            { p: par/100,  c: '#f59e0b' },
+            { p: paid/100, c: '#10b981' }
+          ];
+          let off = 0;
+        %>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:20px;">
+          <svg viewBox="0 0 120 120" width="130" height="130">
+            <% segs.forEach(seg => {
+              const dash = seg.p * CIRC, gap = CIRC - dash;
+            %>
+            <circle cx="<%= CX %>" cy="<%= CY %>" r="<%= R %>"
+              fill="none" stroke="<%= seg.c %>" stroke-width="18"
+              stroke-dasharray="<%= dash.toFixed(2) %> <%= gap.toFixed(2) %>"
+              stroke-dashoffset="<%= (-(off * CIRC)).toFixed(2) %>"
+              transform="rotate(-90 <%= CX %> <%= CY %>)"/>
+            <% off += seg.p; }); %>
+            <text x="60" y="55" text-anchor="middle" font-family="Cairo,sans-serif" font-size="15" font-weight="800" style="fill:var(--text)"><%= counts.invoices %></text>
+            <text x="60" y="70" text-anchor="middle" font-family="Cairo,sans-serif" font-size="9" style="fill:var(--text-2)">إجمالي</text>
+          </svg>
+          <div style="width:100%; display:flex; flex-direction:column; gap:10px;">
+            <div class="db-legend-row">
+              <span class="db-legend-dot" style="background:#ef4444;"></span>
+              <span style="flex:1; font-size:13px;">غير مدفوعة</span>
+              <strong style="font-size:13px;"><%= invoiceStatuses.unpaid %></strong>
+              <span class="db-legend-pct"><%= unp %>%</span>
+            </div>
+            <div class="db-legend-row">
+              <span class="db-legend-dot" style="background:#f59e0b;"></span>
+              <span style="flex:1; font-size:13px;">جزئية</span>
+              <strong style="font-size:13px;"><%= invoiceStatuses.partial %></strong>
+              <span class="db-legend-pct"><%= par %>%</span>
+            </div>
+            <div class="db-legend-row">
+              <span class="db-legend-dot" style="background:#10b981;"></span>
+              <span style="flex:1; font-size:13px;">مدفوعة</span>
+              <strong style="font-size:13px;"><%= invoiceStatuses.paid %></strong>
+              <span class="db-legend-pct"><%= paid %>%</span>
+            </div>
+          </div>
+          <a href="/admin/invoices" class="btn-gold w-100 justify-content-center" style="font-size:13px; display:flex; align-items:center; gap:6px; padding:9px 0; text-decoration:none;">
+            <i class="fa-solid fa-eye"></i> عرض جميع الفواتير
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  const labels = <%- chartLabels %>;
+  const data   = <%- chartData %>;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const tColor = isDark ? '#8b949e' : '#6b7280';
+  const ctx = document.getElementById('salesChart');
+  if(!ctx) return;
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets:[{
+        label: 'الفواتير',
+        data,
+        borderColor:'#6366f1',
+        backgroundColor:'rgba(99,102,241,0.10)',
+        borderWidth: 2.5,
+        pointBackgroundColor:'#6366f1',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options:{
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          rtl: true,
+          bodyFont:{ family:'Cairo' },
+          titleFont:{ family:'Cairo' },
+          callbacks:{ label: ctx => ' ' + ctx.parsed.y.toLocaleString('en') }
+        }
+      },
+      scales:{
+        x:{ grid:{ color:gColor }, ticks:{ color:tColor, font:{ family:'Cairo', size:12 } } },
+        y:{ grid:{ color:gColor }, ticks:{ color:tColor, font:{ family:'Cairo', size:11 }, callback: v => v.toLocaleString('en') }, beginAtZero:true }
+      }
+    }
+  });
+})();
+document.getElementById('todayDate').textContent = new Date().toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+</script>
+
+<%- include('../partials/admin-footer') %>

@@ -1,0 +1,138 @@
+<%- include('../partials/admin-header') %>
+<style>
+  .status-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 12px; border-radius:20px; font-size:12px; font-weight:700; }
+  .status-unpaid  { background:#fee2e2; color:#991b1b; }
+  .status-partial { background:#fef3c7; color:#92400e; }
+  .status-paid    { background:#d1fae5; color:#065f46; }
+  .sale-card { background:var(--card-bg); border:1px solid var(--border-color); border-radius:14px; padding:16px; margin-bottom:12px; }
+  .sale-card .sale-num { font-size:13px; font-weight:800; color:var(--primary-gold); }
+  .sale-card .sale-customer { font-size:14px; font-weight:700; }
+  .sale-card .sale-amount { font-size:18px; font-weight:900; color:#059669; }
+  .sale-card .sale-remaining { font-size:13px; color:#dc2626; font-weight:700; }
+  .stats-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+  .stat-box { flex:1; min-width:120px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:14px 18px; text-align:center; }
+  .stat-box .s-val { font-size:22px; font-weight:900; color:var(--primary-gold); }
+  .stat-box .s-lbl { font-size:12px; color:var(--text-muted); margin-top:2px; }
+</style>
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h2 class="section-title mb-0"><i class="fa-solid fa-store"></i> مبيعات المعرض</h2>
+  <a href="/admin/sales/add" class="btn btn-gold">
+    <i class="fa-solid fa-plus me-1"></i> مبيعة جديدة
+  </a>
+</div>
+
+<!-- إحصائيات -->
+<div class="stats-row">
+  <div class="stat-box">
+    <div class="s-val"><%= sales.length %></div>
+    <div class="s-lbl">إجمالي المبيعات</div>
+  </div>
+  <div class="stat-box">
+    <div class="s-val"><%= totalSales.toLocaleString('ar-EG') %> ₪</div>
+    <div class="s-lbl">إجمالي المبالغ</div>
+  </div>
+  <div class="stat-box">
+    <div class="s-val"><%= totalPaid.toLocaleString('ar-EG') %> ₪</div>
+    <div class="s-lbl">المحصّل</div>
+  </div>
+  <div class="stat-box">
+    <div class="s-val" style="color:#dc2626;"><%= totalRemaining.toLocaleString('ar-EG') %> ₪</div>
+    <div class="s-lbl">المتبقي</div>
+  </div>
+</div>
+
+<!-- جدول desktop -->
+<div class="table-luxury d-none d-md-block">
+  <table class="table table-hover mb-0">
+    <thead>
+      <tr>
+        <th>رقم المبيعة</th>
+        <th>التاريخ</th>
+        <th>الزبون</th>
+        <th>عدد الأصناف</th>
+        <th>الإجمالي</th>
+        <th>المحصّل</th>
+        <th>المتبقي</th>
+        <th>الحالة</th>
+        <th>إجراءات</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if(sales.length === 0) { %>
+        <tr><td colspan="9" class="text-center py-4" style="color:var(--text-muted);">
+          <i class="fa-solid fa-store fa-2x mb-2 d-block opacity-30"></i>
+          لا توجد مبيعات بعد — <a href="/admin/sales/add" class="text-decoration-none" style="color:var(--primary-gold);">أضف أول مبيعة</a>
+        </td></tr>
+      <% } %>
+      <% sales.forEach(s => { %>
+        <tr>
+          <td><span style="font-family:monospace;font-weight:800;color:var(--primary-gold);"><%= s.saleNumber %></span></td>
+          <td><%= new Date(s.saleDate).toLocaleDateString('ar-EG') %></td>
+          <td>
+            <div style="font-weight:700;"><%= s.customerName %></div>
+            <% if(s.customerPhone) { %><small style="color:var(--text-muted);"><%= s.customerPhone %></small><% } %>
+          </td>
+          <td><span class="badge bg-secondary"><%= s.items.length %></span></td>
+          <td style="font-weight:800;"><%= s.totalAmount.toLocaleString('ar-EG') %> ₪</td>
+          <td style="color:#059669;font-weight:700;"><%= s.paidAmount.toLocaleString('ar-EG') %> ₪</td>
+          <td style="color:#dc2626;font-weight:700;"><%= s.remainingBalance.toLocaleString('ar-EG') %> ₪</td>
+          <td>
+            <span class="status-badge status-<%= s.status %>">
+              <%= s.status==='paid' ? '✅ مكتملة' : s.status==='partial' ? '🔶 جزئي' : '🔴 غير مدفوعة' %>
+            </span>
+          </td>
+          <td>
+            <div class="d-flex gap-1 flex-wrap">
+              <a href="/admin/sales/view/<%= s._id %>" class="btn btn-sm btn-outline-primary" title="عرض"><i class="fa-solid fa-eye"></i></a>
+              <a href="/admin/sales/edit/<%= s._id %>" class="btn btn-sm btn-outline-warning" title="تعديل"><i class="fa-solid fa-pen"></i></a>
+              <a href="/admin/sales/print/<%= s._id %>" target="_blank" class="btn btn-sm btn-outline-secondary" title="طباعة"><i class="fa-solid fa-print"></i></a>
+              <form action="/admin/sales/delete/<%= s._id %>" method="POST" style="display:inline;" onsubmit="return confirm('حذف المبيعة <%= s.saleNumber %>؟')">
+                <button class="btn btn-sm btn-outline-danger" title="حذف"><i class="fa-solid fa-trash"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<!-- بطاقات mobile -->
+<div class="d-md-none">
+  <% sales.forEach(s => { %>
+    <div class="sale-card">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <div class="sale-num"><%= s.saleNumber %></div>
+          <div class="sale-customer"><%= s.customerName %></div>
+          <div style="font-size:12px;color:var(--text-muted);"><%= new Date(s.saleDate).toLocaleDateString('ar-EG') %></div>
+        </div>
+        <span class="status-badge status-<%= s.status %>">
+          <%= s.status==='paid' ? 'مكتملة' : s.status==='partial' ? 'جزئي' : 'غير مدفوعة' %>
+        </span>
+      </div>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="sale-amount"><%= s.totalAmount.toLocaleString('ar-EG') %> ₪</div>
+          <% if(s.remainingBalance > 0) { %>
+            <div class="sale-remaining">متبقي: <%= s.remainingBalance.toLocaleString('ar-EG') %> ₪</div>
+          <% } %>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="/admin/sales/view/<%= s._id %>" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-eye"></i></a>
+          <a href="/admin/sales/edit/<%= s._id %>" class="btn btn-sm btn-outline-warning"><i class="fa-solid fa-pen"></i></a>
+          <a href="/admin/sales/print/<%= s._id %>" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-print"></i></a>
+        </div>
+      </div>
+    </div>
+  <% }) %>
+  <% if(sales.length === 0) { %>
+    <div class="text-center py-5" style="color:var(--text-muted);">
+      <i class="fa-solid fa-store fa-3x mb-3 d-block opacity-30"></i>
+      لا توجد مبيعات بعد
+    </div>
+  <% } %>
+</div>
+
+<%- include('../partials/admin-footer') %>

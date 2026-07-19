@@ -1,0 +1,884 @@
+<%- include('../partials/admin-header') %>
+<%
+const vData = visit || {};
+const sofasData   = vData.sofas   || [];
+const qaadasData  = vData.qaadas  || [];
+const roomsData   = vData.rooms   || [];
+const windowsData = vData.windows || [];
+const VISIT_ID    = visit ? String(visit._id) : '';
+const isEditMode  = !isNew && !!visit;
+%>
+<style>
+.form-hdr{background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:16px;padding:20px 26px;color:white;margin-bottom:22px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;}
+.form-hdr .cname{font-size:19px;font-weight:800;color:#d4af37;}
+.form-hdr .cmeta{font-size:12px;color:#94a3b8;margin-top:3px;}
+.hdr-btns{display:flex;gap:9px;flex-wrap:wrap;}
+.btn-save{background:linear-gradient(135deg,#d4af37,#c5a030);color:white;border:none;padding:10px 22px;border-radius:10px;font-weight:700;font-size:14px;font-family:'Cairo',sans-serif;cursor:pointer;display:flex;align-items:center;gap:7px;}
+.btn-save:hover{transform:scale(1.03);}
+.btn-ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#cbd5e1;padding:10px 16px;border-radius:10px;font-weight:600;font-size:13px;font-family:'Cairo',sans-serif;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+.back-link{color:#94a3b8;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:5px;margin-bottom:6px;}
+.back-link:hover{color:#d4af37;}
+
+.vtabs{display:flex;gap:5px;flex-wrap:wrap;background:var(--card-bg);border-radius:12px;padding:7px;border:1px solid var(--border-color);margin-bottom:18px;}
+.vtab{padding:8px 15px;border-radius:8px;border:none;background:transparent;color:var(--text-muted);font-family:'Cairo',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.vtab.active{background:linear-gradient(135deg,#d4af37,#c5a030);color:white;}
+.vtab:hover:not(.active){background:rgba(212,175,55,.1);color:#d4af37;}
+.vpanel{display:none;animation:fadeIn .2s;}
+.vpanel.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+
+.sec{background:var(--card-bg);border-radius:14px;border:1px solid var(--border-color);padding:20px;margin-bottom:14px;}
+.sec-tit{font-size:15px;font-weight:800;color:var(--text-main);margin-bottom:16px;display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid rgba(212,175,55,.25);}
+.sec-tit i{color:#d4af37;}
+
+.item-card{background:rgba(212,175,55,.03);border:1px solid rgba(212,175,55,.15);border-radius:12px;padding:16px;margin-bottom:12px;position:relative;}
+.item-card .item-lbl{font-weight:800;color:#d4af37;font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.rm-btn{position:absolute;top:10px;left:10px;background:#fee2e2;border:none;color:#dc2626;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:.15s;}
+.rm-btn:hover{background:#dc2626;color:white;}
+.add-btn{width:100%;padding:10px;border:2px dashed rgba(212,175,55,.35);border-radius:10px;background:rgba(212,175,55,.04);color:#d4af37;font-family:'Cairo',sans-serif;font-weight:700;font-size:14px;cursor:pointer;transition:.2s;margin-top:4px;}
+.add-btn:hover{background:rgba(212,175,55,.1);border-color:#d4af37;}
+
+.form-label{font-weight:700;font-size:12px;color:var(--text-main);margin-bottom:4px;display:block;}
+.form-control,.form-select{border-radius:8px;border:1px solid var(--border-color);padding:8px 11px;background:var(--card-bg);color:var(--text-main);font-family:'Cairo',sans-serif;font-size:13px;width:100%;}
+.form-control:focus,.form-select:focus{border-color:#d4af37;outline:none;box-shadow:0 0 0 3px rgba(212,175,55,.12);}
+[data-theme="dark"] .form-control,[data-theme="dark"] .form-select{background:#1c2128;border-color:#30363d;color:#e6edf3;}
+
+.style-box{border:2px dashed var(--border-color);border-radius:9px;padding:10px;text-align:center;cursor:pointer;transition:.2s;position:relative;}
+.style-box:hover{border-color:#d4af37;}
+.style-box img{max-height:110px;border-radius:7px;display:none;}
+.style-box .style-txt{font-size:11px;color:var(--text-muted);}
+
+.canvas-sec{margin-top:18px;padding-top:16px;border-top:1px dashed rgba(212,175,55,.3);}
+.canvas-sec-tit{font-size:14px;font-weight:800;color:var(--text-main);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.canvas-sec-tit i{color:#d4af37;}
+.ctools{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:10px;}
+.ctool{padding:7px 12px;border:1px solid var(--border-color);border-radius:8px;background:var(--card-bg);color:var(--text-main);font-family:'Cairo',sans-serif;font-size:12px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:4px;}
+.ctool.active,.ctool:hover{background:rgba(212,175,55,.12);border-color:#d4af37;color:#d4af37;}
+.ctool-angle{background:#f59e0b;color:white;border-color:#f59e0b;}
+.ctool-angle:hover{background:#d97706;border-color:#d97706;color:white;}
+.csep{width:1px;height:28px;background:var(--border-color);}
+.canvas-wrap{background:white;border-radius:10px;overflow:hidden;border:1px solid var(--border-color);position:relative;}
+canvas{display:block;max-width:100%;touch-action:none;cursor:crosshair;}
+
+.photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:12px;}
+.photo-item{position:relative;border-radius:9px;overflow:hidden;border:1px solid var(--border-color);}
+.photo-item img{width:100%;height:100px;object-fit:cover;display:block;}
+.photo-del{position:absolute;top:4px;left:4px;background:rgba(220,38,38,.85);color:white;border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;}
+.upload-zone{border:2px dashed var(--border-color);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:.2s;}
+.upload-zone:hover{border-color:#d4af37;background:rgba(212,175,55,.04);}
+.disabled-zone{border:2px dashed rgba(212,175,55,.2);border-radius:10px;padding:30px;text-align:center;background:rgba(212,175,55,.02);}
+
+.toast-msg{position:fixed;top:75px;left:50%;transform:translateX(-50%);padding:11px 22px;border-radius:10px;font-weight:700;font-size:13px;z-index:9999;display:none;font-family:'Cairo',sans-serif;}
+.toast-msg.ok{background:#dcfce7;color:#166534;border:1px solid #bbf7d0;}
+.toast-msg.err{background:#fee2e2;color:#dc2626;border:1px solid #fecaca;}
+
+.total-summary{background:rgba(212,175,55,.08);border:2px solid rgba(212,175,55,.3);border-radius:12px;padding:15px 20px;margin-top:15px;}
+.total-summary .total-item{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;}
+.total-summary .total-item i{color:#d4af37;}
+.total-summary .total-item .total-value{color:#d4af37;font-size:20px;}
+.total-summary .total-item .total-unit{font-size:12px;color:var(--text-muted);}
+.total-summary .total-item .total-count{font-size:12px;color:var(--text-muted);}
+.total-summary .total-item .total-detail{font-size:11px;color:var(--text-muted);margin-right:5px;}
+</style>
+
+<div class="toast-msg" id="toastEl"></div>
+
+<a href="/admin/customers/<%= customer._id %>/visits" class="back-link"><i class="fa-solid fa-arrow-right"></i> زيارات <%= customer.fullName %></a>
+
+<div class="form-hdr">
+  <div>
+    <div class="cname"><i class="fa-solid fa-user me-1"></i> <%= customer.fullName %></div>
+    <div class="cmeta">
+      <% if(isNew){ %>زيارة جديدة<% } else { %>تعديل زيارة #<%= visit.visitNumber %><% } %>
+      &nbsp;|&nbsp;
+      <input type="date" id="visitDateInput"
+        value="<%= isEditMode ? new Date(visit.visitDate).toISOString().slice(0,10) : new Date().toISOString().slice(0,10) %>"
+        style="background:transparent;border:none;color:#94a3b8;font-family:'Cairo',sans-serif;font-size:12px;">
+    </div>
+  </div>
+  <div class="hdr-btns">
+    <% if(isEditMode){ %>
+      <a href="/admin/customers/<%= customer._id %>/visits/<%= visit._id %>/print" target="_blank" class="btn-ghost"><i class="fa-solid fa-print"></i> طباعة</a>
+    <% } %>
+    <button class="btn-save" onclick="saveVisit()"><i class="fa-solid fa-floppy-disk"></i> حفظ الزيارة</button>
+  </div>
+</div>
+
+<div class="vtabs">
+  <button class="vtab active" onclick="switchTab('sofa',this)"><i class="fa-solid fa-couch"></i> الكنب</button>
+  <button class="vtab" onclick="switchTab('qaada',this)"><i class="fa-solid fa-chair"></i> القعدة</button>
+  <button class="vtab" onclick="switchTab('carpet',this)"><i class="fa-solid fa-border-all"></i> الموكيت</button>
+  <button class="vtab" onclick="switchTab('windows',this)"><i class="fa-solid fa-window-maximize"></i> البرادي</button>
+  <button class="vtab" onclick="switchTab('photos',this)"><i class="fa-solid fa-images"></i> الصور</button>
+  <button class="vtab" onclick="switchTab('notes',this)"><i class="fa-solid fa-note-sticky"></i> ملاحظات</button>
+</div>
+
+<!-- SOFA TAB -->
+<div class="vpanel active" id="panel-sofa">
+  <div class="sec">
+    <div class="sec-tit"><i class="fa-solid fa-couch"></i> الكنبات</div>
+    <div id="sofaList"></div>
+    <button class="add-btn" onclick="addSofa()"><i class="fa-solid fa-plus me-1"></i> إضافة كنب</button>
+  </div>
+</div>
+
+<!-- QAADA TAB -->
+<div class="vpanel" id="panel-qaada">
+  <div class="sec">
+    <div class="sec-tit"><i class="fa-solid fa-chair"></i> القعدات</div>
+    <div id="qaadaList"></div>
+    <button class="add-btn" onclick="addQaada()"><i class="fa-solid fa-plus me-1"></i> إضافة قعدة</button>
+
+    <div class="canvas-sec">
+      <div class="canvas-sec-tit"><i class="fa-solid fa-pen-nib"></i> رسم توزيع القعدة</div>
+      <div class="ctools" id="qcTools">
+        <button class="ctool active" onclick="setCTool('pencil','qc',this)"><i class="fa-solid fa-pencil"></i> قلم</button>
+        <button class="ctool" onclick="setCTool('line','qc',this)"><i class="fa-solid fa-minus"></i> خط</button>
+        <button class="ctool" onclick="setCTool('rect','qc',this)"><i class="fa-regular fa-square"></i> مربع</button>
+        <button class="ctool" onclick="setCTool('circle','qc',this)"><i class="fa-regular fa-circle"></i> دائرة</button>
+        <button class="ctool ctool-angle" onclick="setCTool('angle','qc',this)"><i class="fa-solid fa-arrow-right"></i> زاوية 90°</button>
+        <button class="ctool" onclick="setCTool('eraser','qc',this)"><i class="fa-solid fa-eraser"></i> ممحاة</button>
+        <div class="csep"></div>
+        <input type="color" id="qcColor" value="#1e293b" onchange="cvState.qc.color=this.value" style="width:32px;height:32px;border:1px solid var(--border-color);border-radius:7px;cursor:pointer;padding:2px;">
+        <input type="range" id="qcSize" min="1" max="20" value="3" oninput="cvState.qc.size=+this.value;document.getElementById('qcSz').textContent=this.value" style="width:90px;">
+        <span id="qcSz" style="font-size:12px;font-weight:700;min-width:20px;">3</span>
+        <div class="csep"></div>
+        <button class="ctool" onclick="undoCV('qc')"><i class="fa-solid fa-rotate-left"></i> تراجع</button>
+        <button class="ctool" onclick="clearCV('qc')"><i class="fa-solid fa-trash"></i> مسح</button>
+      </div>
+      <div class="canvas-wrap"><canvas id="cvQaada" width="880" height="500"></canvas></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;"><i class="fa-solid fa-info-circle me-1"></i>يُحفظ الرسم ضمن الزيارة عند الضغط على "حفظ الزيارة"</div>
+    </div>
+  </div>
+</div>
+
+<!-- CARPET TAB -->
+<div class="vpanel" id="panel-carpet">
+  <div class="sec">
+    <div class="sec-tit"><i class="fa-solid fa-border-all"></i> الغرف والموكيت</div>
+    <div id="roomList"></div>
+    <button class="add-btn" onclick="addRoom()"><i class="fa-solid fa-plus me-1"></i> إضافة غرفة</button>
+  </div>
+</div>
+
+<!-- WINDOWS TAB -->
+<div class="vpanel" id="panel-windows">
+  <div class="sec">
+    <div class="sec-tit"><i class="fa-solid fa-window-maximize"></i> الشبابيك والبرادي</div>
+    <div id="windowList"></div>
+    <button class="add-btn" onclick="addWin()"><i class="fa-solid fa-plus me-1"></i> إضافة شباك</button>
+
+    <div class="canvas-sec">
+      <div class="canvas-sec-tit"><i class="fa-solid fa-pen-nib"></i> رسم توزيع الشبابيك</div>
+      <div class="ctools" id="wcTools">
+        <button class="ctool active" onclick="setCTool('pencil','wc',this)"><i class="fa-solid fa-pencil"></i> قلم</button>
+        <button class="ctool" onclick="setCTool('line','wc',this)"><i class="fa-solid fa-minus"></i> خط</button>
+        <button class="ctool" onclick="setCTool('rect','wc',this)"><i class="fa-regular fa-square"></i> مربع</button>
+        <button class="ctool" onclick="setCTool('circle','wc',this)"><i class="fa-regular fa-circle"></i> دائرة</button>
+        <button class="ctool ctool-angle" onclick="setCTool('angle','wc',this)"><i class="fa-solid fa-arrow-right"></i> زاوية 90°</button>
+        <button class="ctool" onclick="setCTool('eraser','wc',this)"><i class="fa-solid fa-eraser"></i> ممحاة</button>
+        <div class="csep"></div>
+        <input type="color" id="wcColor" value="#1e293b" onchange="cvState.wc.color=this.value" style="width:32px;height:32px;border:1px solid var(--border-color);border-radius:7px;cursor:pointer;padding:2px;">
+        <input type="range" id="wcSize" min="1" max="20" value="3" oninput="cvState.wc.size=+this.value;document.getElementById('wcSz').textContent=this.value" style="width:90px;">
+        <span id="wcSz" style="font-size:12px;font-weight:700;min-width:20px;">3</span>
+        <div class="csep"></div>
+        <button class="ctool" onclick="undoCV('wc')"><i class="fa-solid fa-rotate-left"></i> تراجع</button>
+        <button class="ctool" onclick="clearCV('wc')"><i class="fa-solid fa-trash"></i> مسح</button>
+      </div>
+      <div class="canvas-wrap"><canvas id="cvWin" width="880" height="500"></canvas></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;"><i class="fa-solid fa-info-circle me-1"></i>يُحفظ الرسم ضمن الزيارة عند الضغط على "حفظ الزيارة"</div>
+    </div>
+  </div>
+</div>
+
+<!-- PHOTOS TAB -->
+<div class="vpanel" id="panel-photos">
+  <div class="sec">
+    <div class="sec-tit"><i class="fa-solid fa-images"></i> الصور</div>
+    <% if(!isEditMode){ %>
+      <div class="disabled-zone">
+        <i class="fa-solid fa-lock fa-2x mb-2" style="color:rgba(212,175,55,.3);display:block;"></i>
+        <div style="font-weight:700;font-size:14px;color:var(--text-muted);">أحفظ الزيارة أولاً لتتمكن من رفع الصور</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">بعد الحفظ سيتم تحويلك لصفحة التعديل حيث يمكنك إضافة الصور</div>
+      </div>
+    <% } else { %>
+      <div class="upload-zone" onclick="document.getElementById('photoInput').click()">
+        <i class="fa-solid fa-cloud-arrow-up fa-2x mb-1" style="color:#d4af37;display:block;"></i>
+        <div style="font-weight:700;font-size:14px;">اضغط لرفع صور</div>
+        <div style="font-size:12px;color:var(--text-muted);">يمكن رفع أكثر من صورة في آن واحد</div>
+        <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this)">
+      </div>
+      <div class="photos-grid" id="photosGrid"></div>
+    <% } %>
+  </div>
+</div>
+
+<!-- NOTES TAB -->
+<div class="vpanel" id="panel-notes">
+  <div class="sec">
+    <div class="sec-tit"><i class="fa-solid fa-note-sticky"></i> ملاحظات عامة</div>
+    <textarea class="form-control" id="generalNotes" rows="8" placeholder="أي ملاحظات تخص هذه الزيارة..."><%= vData.generalNotes || '' %></textarea>
+  </div>
+</div>
+
+<script>
+const CUST_ID  = '<%= customer._id %>';
+const VISIT_ID = '<%= VISIT_ID %>';
+const IS_NEW   = <%- isNew ? 'true' : 'false' %>;
+
+function switchTab(n, btn) {
+  document.querySelectorAll('.vpanel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.vtab').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + n).classList.add('active');
+  btn.classList.add('active');
+}
+
+function showToast(msg, type='ok') {
+  const el = document.getElementById('toastEl');
+  el.textContent = msg; el.className = 'toast-msg ' + type; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3500);
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+let sofas   = <%- JSON.stringify(sofasData) %>;
+let qaadas  = <%- JSON.stringify(qaadasData) %>;
+let rooms   = <%- JSON.stringify(roomsData) %>;
+let windows = <%- JSON.stringify(windowsData) %>;
+let photos  = <%- JSON.stringify(vData.photos || []) %>;
+
+// ===== SOFAS =====
+function renderSofas() {
+  const el = document.getElementById('sofaList');
+  if (!sofas.length) { el.innerHTML = ''; return; }
+  el.innerHTML = sofas.map((s, i) => `
+  <div class="item-card">
+    <button class="rm-btn" onclick="removeSofa(${i})"><i class="fa-solid fa-xmark"></i></button>
+    <div class="item-lbl"><i class="fa-solid fa-couch"></i> كنب ${i+1}</div>
+    <div class="row g-2">
+      <div class="col-md-4"><label class="form-label">نوع الكنب</label>
+        <input class="form-control" value="${esc(s.sofaType)}" oninput="sofas[${i}].sofaType=this.value"></div>
+      <div class="col-md-2"><label class="form-label">عدد المقاعد</label>
+        <input type="number" class="form-control" value="${s.seats||''}" oninput="sofas[${i}].seats=+this.value"></div>
+      <div class="col-md-3"><label class="form-label">نوع الإسفنج</label>
+        <input class="form-control" value="${esc(s.foamType)}" oninput="sofas[${i}].foamType=this.value"></div>
+      <div class="col-md-3"><label class="form-label">نوع القماش</label>
+        <input class="form-control" value="${esc(s.fabricType)}" oninput="sofas[${i}].fabricType=this.value"></div>
+      <div class="col-md-3"><label class="form-label">اللون</label>
+        <input class="form-control" value="${esc(s.color)}" oninput="sofas[${i}].color=this.value"></div>
+      <div class="col-md-3"><label class="form-label">نوع الأرجل</label>
+        <input class="form-control" value="${esc(s.legType)}" oninput="sofas[${i}].legType=this.value"></div>
+      <div class="col-md-2"><label class="form-label">عدد المخدات</label>
+        <input type="number" class="form-control" value="${s.cushionCount||''}" oninput="sofas[${i}].cushionCount=+this.value"></div>
+      <div class="col-md-3">
+        <label class="form-label">سعر الكنبة (₪)</label>
+        <input type="number" step="0.01" class="form-control" value="${s.price||''}" 
+               oninput="sofas[${i}].price=+this.value;renderSofasTotals()" placeholder="مثال: 500">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">الإجمالي (₪)</label>
+        <input type="number" step="0.01" class="form-control" id="stotal_${i}" 
+               value="${(s.price||0).toFixed(2)}" readonly 
+               style="background:rgba(212,175,55,.06);font-weight:700;color:#d4af37;">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">صورة الطقم</label>
+        <div class="style-box" onclick="document.getElementById('sfimg_${i}').click()">
+          <img id="simg_${i}" src="${esc(s.styleImage)}" ${s.styleImage ? 'style="display:block;"' : ''}>
+          <div class="style-txt"><i class="fa-solid fa-image me-1"></i>${s.styleImage ? 'اضغط لتغيير الصورة' : 'اضغط لرفع صورة الطقم'}</div>
+          <input type="file" id="sfimg_${i}" accept="image/*" style="display:none"
+            onchange="uploadImgFor(this,'sofa',${i},'simg_${i}')">
+        </div>
+      </div>
+      <div class="col-12"><label class="form-label">ملاحظات</label>
+        <textarea class="form-control" rows="2" oninput="sofas[${i}].notes=this.value">${esc(s.notes)}</textarea></div>
+    </div>
+  </div>`).join('');
+  renderSofasTotals();
+}
+function renderSofasTotals() {
+  sofas.forEach((s, i) => {
+    const el = document.getElementById('stotal_'+i);
+    if(el) el.value = (s.price||0).toFixed(2);
+  });
+}
+function addSofa() { sofas.push({sofaType:'',seats:0,foamType:'',fabricType:'',color:'',legType:'',cushionCount:0,styleImage:'',notes:'',price:0}); renderSofas(); }
+function removeSofa(i) { if(confirm('حذف هذا الكنب؟')){ sofas.splice(i,1); renderSofas(); } }
+
+// ===== QAADAS =====
+function renderQaadas() {
+  const el = document.getElementById('qaadaList');
+  if (!qaadas.length) { el.innerHTML = ''; return; }
+  el.innerHTML = qaadas.map((q, i) => `
+  <div class="item-card">
+    <button class="rm-btn" onclick="removeQaada(${i})"><i class="fa-solid fa-xmark"></i></button>
+    <div class="item-lbl"><i class="fa-solid fa-chair"></i> قعدة ${i+1}</div>
+    <div class="row g-2">
+      <div class="col-md-3"><label class="form-label">نوع القعدة</label>
+        <input class="form-control" value="${esc(q.qaadaType)}" oninput="qaadas[${i}].qaadaType=this.value"></div>
+      <div class="col-md-2"><label class="form-label">المسافة (م)</label>
+        <input type="number" step="0.01" class="form-control" value="${q.distance||''}" 
+               oninput="qaadas[${i}].distance=+this.value;calcQaadaTotal(${i})" placeholder="أكم متر القعدة"></div>
+      <div class="col-md-3"><label class="form-label">نوع الإسفنج</label>
+        <input class="form-control" value="${esc(q.foamType)}" oninput="qaadas[${i}].foamType=this.value"></div>
+      <div class="col-md-3"><label class="form-label">نوع القماش</label>
+        <input class="form-control" value="${esc(q.fabricType)}" oninput="qaadas[${i}].fabricType=this.value"></div>
+      <div class="col-md-3"><label class="form-label">اللون</label>
+        <input class="form-control" value="${esc(q.color)}" oninput="qaadas[${i}].color=this.value"></div>
+      <div class="col-md-3"><label class="form-label">نوع الأرجل</label>
+        <input class="form-control" value="${esc(q.legType)}" oninput="qaadas[${i}].legType=this.value"></div>
+      <div class="col-md-3">
+        <label class="form-label">سعر المتر (₪)</label>
+        <input type="number" step="0.01" class="form-control" value="${q.pricePerMeter||''}" 
+               oninput="qaadas[${i}].pricePerMeter=+this.value;calcQaadaTotal(${i})" placeholder="مثال: 40">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">الإجمالي (₪)</label>
+        <input type="number" step="0.01" class="form-control" id="qtotal_${i}" 
+               value="${((q.distance||0)*(q.pricePerMeter||0)).toFixed(2)}" readonly 
+               style="background:rgba(212,175,55,.06);font-weight:700;color:#d4af37;">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">صورة الطقم</label>
+        <div class="style-box" onclick="document.getElementById('qfimg_${i}').click()">
+          <img id="qimg_${i}" src="${esc(q.styleImage)}" ${q.styleImage ? 'style="display:block;"' : ''}>
+          <div class="style-txt"><i class="fa-solid fa-image me-1"></i>${q.styleImage ? 'اضغط لتغيير الصورة' : 'اضغط لرفع صورة الطقم'}</div>
+          <input type="file" id="qfimg_${i}" accept="image/*" style="display:none"
+            onchange="uploadImgFor(this,'qaada',${i},'qimg_${i}')">
+        </div>
+      </div>
+      <div class="col-12"><label class="form-label">ملاحظات</label>
+        <textarea class="form-control" rows="2" oninput="qaadas[${i}].notes=this.value">${esc(q.notes)}</textarea></div>
+    </div>
+  </div>`).join('');
+}
+function calcQaadaTotal(i) {
+  const total = (qaadas[i].distance||0) * (qaadas[i].pricePerMeter||0);
+  const el = document.getElementById('qtotal_'+i);
+  if(el) el.value = total.toFixed(2);
+}
+function addQaada() { qaadas.push({qaadaType:'',foamType:'',fabricType:'',color:'',legType:'',distance:0,styleImage:'',notes:'',pricePerMeter:0}); renderQaadas(); }
+function removeQaada(i) { if(confirm('حذف هذه القعدة؟')){ qaadas.splice(i,1); renderQaadas(); } }
+
+// ===== ROOMS =====
+function renderRooms() {
+  const el = document.getElementById('roomList');
+  if (!rooms.length) { el.innerHTML = ''; return; }
+  el.innerHTML = rooms.map((r, i) => `
+  <div class="item-card">
+    <button class="rm-btn" onclick="removeRoom(${i})"><i class="fa-solid fa-xmark"></i></button>
+    <div class="item-lbl"><i class="fa-solid fa-border-all"></i> غرفة ${i+1}</div>
+    <div class="row g-2">
+      <div class="col-md-3"><label class="form-label">اسم الغرفة</label>
+        <input class="form-control" value="${esc(r.name)}" oninput="rooms[${i}].name=this.value"></div>
+      <div class="col-md-2"><label class="form-label">الطول (م)</label>
+        <input type="number" step="0.01" class="form-control" value="${r.length||''}" 
+               oninput="rooms[${i}].length=+this.value;calcRoomArea(${i})"></div>
+      <div class="col-md-2"><label class="form-label">العرض (م)</label>
+        <input type="number" step="0.01" class="form-control" value="${r.width||''}" 
+               oninput="rooms[${i}].width=+this.value;calcRoomArea(${i})"></div>
+      <div class="col-md-2"><label class="form-label">المساحة (م²)</label>
+        <input type="number" step="0.01" class="form-control" id="rarea_${i}" 
+               value="${r.area||''}" readonly style="background:rgba(212,175,55,.06);font-weight:700;"></div>
+      <div class="col-md-3"><label class="form-label">نوع الموكيت</label>
+        <input class="form-control" value="${esc(r.carpetType)}" oninput="rooms[${i}].carpetType=this.value"></div>
+      <div class="col-md-3"><label class="form-label">اللون</label>
+        <input class="form-control" value="${esc(r.color)}" oninput="rooms[${i}].color=this.value"></div>
+      <div class="col-md-3">
+        <label class="form-label">سعر المتر المربع (₪)</label>
+        <input type="number" step="0.01" class="form-control" value="${r.pricePerMeter||''}" 
+               oninput="rooms[${i}].pricePerMeter=+this.value;calcRoomArea(${i})" placeholder="مثال: 30">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">الإجمالي (₪)</label>
+        <input type="number" step="0.01" class="form-control" id="rtotal_${i}" 
+               value="${((r.area||0)*(r.pricePerMeter||0)).toFixed(2)}" readonly 
+               style="background:rgba(212,175,55,.06);font-weight:700;color:#d4af37;">
+      </div>
+    </div>
+  </div>`).join('');
+  renderTotals();
+}
+function addRoom() { rooms.push({name:'',length:0,width:0,area:0,carpetType:'',color:'',pricePerMeter:0}); renderRooms(); }
+function removeRoom(i) { if(confirm('حذف هذه الغرفة؟')){ rooms.splice(i,1); renderRooms(); } }
+function calcRoomArea(i) { 
+  const a=(rooms[i].length||0)*(rooms[i].width||0); 
+  rooms[i].area=a; 
+  const el=document.getElementById('rarea_'+i); 
+  if(el)el.value=a.toFixed(2);
+  const total = a * (rooms[i].pricePerMeter||0);
+  const totalEl = document.getElementById('rtotal_'+i);
+  if(totalEl) totalEl.value = total.toFixed(2);
+  renderTotals(); 
+}
+
+// ===== WINDOWS =====
+function renderWins() {
+  const el = document.getElementById('windowList');
+  if (!windows.length) { el.innerHTML = ''; return; }
+  el.innerHTML = windows.map((w, i) => `
+  <div class="item-card">
+    <button class="rm-btn" onclick="removeWin(${i})"><i class="fa-solid fa-xmark"></i></button>
+    <div class="item-lbl"><i class="fa-solid fa-window-maximize"></i> شباك ${i+1}</div>
+    <div class="row g-2">
+      <div class="col-md-3"><label class="form-label">المكان</label>
+        <input class="form-control" value="${esc(w.location)}" oninput="windows[${i}].location=this.value" placeholder="غرفة ضيوف، مطبخ..."></div>
+      <div class="col-md-2"><label class="form-label">العرض (م)</label>
+        <input type="number" step="0.01" class="form-control" value="${w.width||''}" 
+               oninput="windows[${i}].width=+this.value;calcWinTotal(${i})" placeholder="متر"></div>
+      <div class="col-md-2"><label class="form-label">الارتفاع (م)</label>
+        <input type="number" step="0.01" class="form-control" value="${w.height||''}" 
+               oninput="windows[${i}].height=+this.value" placeholder="متر"></div>
+      <div class="col-md-2"><label class="form-label">العدد</label>
+        <input type="number" class="form-control" value="${w.count||1}" 
+               oninput="windows[${i}].count=+this.value;calcWinTotal(${i})" min="1"></div>
+      <div class="col-md-2"><label class="form-label">الإجمالي (م)</label>
+        <input type="number" step="0.01" class="form-control" id="wtotal_${i}" 
+               value="${((w.width||0)*(w.count||1)).toFixed(2)}" readonly 
+               style="background:rgba(212,175,55,.06);font-weight:700;"></div>
+      <div class="col-md-3"><label class="form-label">نوع القماش</label>
+        <input class="form-control" value="${esc(w.fabricType)}" oninput="windows[${i}].fabricType=this.value"></div>
+      <div class="col-md-3"><label class="form-label">اللون</label>
+        <input class="form-control" value="${esc(w.color)}" oninput="windows[${i}].color=this.value"></div>
+      <div class="col-md-3"><label class="form-label">نوع البرادي (اسم)</label>
+        <input class="form-control" value="${esc(w.curtainTypeName)}" oninput="windows[${i}].curtainTypeName=this.value"></div>
+      <div class="col-md-3">
+        <label class="form-label">سعر المتر (₪)</label>
+        <input type="number" step="0.01" class="form-control" value="${w.pricePerMeter||''}" 
+               oninput="windows[${i}].pricePerMeter=+this.value;calcWinTotal(${i})" placeholder="مثال: 50">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">الإجمالي (₪)</label>
+        <input type="number" step="0.01" class="form-control" id="wprice_${i}" 
+               value="${((w.width||0)*(w.count||1)*(w.pricePerMeter||0)).toFixed(2)}" readonly 
+               style="background:rgba(212,175,55,.06);font-weight:700;color:#d4af37;">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">صورة نوع البرادي <span style="font-size:10px;color:#94a3b8;">اختياري</span></label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          ${w.curtainTypeImage
+            ? `<img src="${esc(w.curtainTypeImage)}" id="cimg_${i}" style="height:38px;border-radius:6px;border:1px solid var(--border-color);">`
+            : `<span id="cimg_${i}" style="font-size:11px;color:#94a3b8;">لا توجد صورة</span>`}
+          <label style="cursor:pointer;padding:6px 11px;background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.25);border-radius:7px;font-size:12px;font-weight:700;color:#d4af37;white-space:nowrap;display:flex;align-items:center;gap:4px;">
+            <i class="fa-solid fa-upload"></i> رفع
+            <input type="file" accept="image/*" style="display:none" onchange="uploadCurtainImg(this,${i})">
+          </label>
+        </div>
+      </div>
+      <div class="col-12"><label class="form-label">ملاحظات</label>
+        <textarea class="form-control" rows="2" oninput="windows[${i}].notes=this.value">${esc(w.notes)}</textarea></div>
+    </div>
+  </div>`).join('');
+  renderTotals();
+}
+
+function calcWinTotal(i) {
+  const total = (windows[i].width||0) * (windows[i].count||1);
+  windows[i].total = total;
+  const el = document.getElementById('wtotal_'+i);
+  if(el) el.value = total.toFixed(2);
+  const totalPrice = total * (windows[i].pricePerMeter||0);
+  const priceEl = document.getElementById('wprice_'+i);
+  if(priceEl) priceEl.value = totalPrice.toFixed(2);
+  renderTotals();
+}
+
+function addWin() { windows.push({location:'',width:0,height:0,count:1,total:0,curtainTypeName:'',curtainTypeImage:'',fabricType:'',color:'',pricePerMeter:0,notes:''}); renderWins(); }
+function removeWin(i) { if(confirm('حذف هذا الشباك؟')){ windows.splice(i,1); renderWins(); } }
+
+// ===== IMAGE UPLOAD =====
+async function uploadImgFor(input, type, idx, previewId) {
+  if (!input.files[0]) return;
+  const fd = new FormData(); fd.append('image', input.files[0]);
+  const vidForUpload = VISIT_ID || 'none';
+  const res = await fetch(`/admin/visits/upload-style/${vidForUpload}/${type}/${idx}`, { method:'POST', body:fd });
+  const data = await res.json();
+  if (data.ok) {
+    const img = document.getElementById(previewId);
+    if (img) { img.src = data.url; img.style.display = 'block'; }
+    if (type === 'sofa')  sofas[idx].styleImage  = data.url;
+    if (type === 'qaada') qaadas[idx].styleImage  = data.url;
+  } else showToast('فشل رفع الصورة', 'err');
+}
+
+async function uploadCurtainImg(input, idx) {
+  if (!input.files[0]) return;
+  const fd = new FormData(); fd.append('image', input.files[0]);
+  const vidForUpload = VISIT_ID || 'none';
+  const res = await fetch(`/admin/visits/upload-curtain/${vidForUpload}/${idx}`, { method:'POST', body:fd });
+  const data = await res.json();
+  if (data.ok) {
+    windows[idx].curtainTypeImage = data.url;
+    renderWins();
+  } else showToast('فشل رفع الصورة', 'err');
+}
+
+// ===== PHOTOS =====
+function renderPhotos() {
+  const grid = document.getElementById('photosGrid');
+  if (!grid) return;
+  grid.innerHTML = photos.map((p, i) => `
+  <div class="photo-item">
+    <img src="${esc(p.url)}" alt="">
+    <button class="photo-del" onclick="delPhoto(${i})"><i class="fa-solid fa-trash"></i></button>
+  </div>`).join('');
+}
+async function uploadPhotos(input) {
+  for (const file of [...input.files]) {
+    const fd = new FormData(); fd.append('photo', file);
+    const res = await fetch(`/admin/visits/upload-photo/${VISIT_ID}`, { method:'POST', body:fd });
+    const data = await res.json();
+    if (data.ok) { photos.push({ url:data.url, caption:'' }); renderPhotos(); showToast('✓ تم رفع الصورة'); }
+    else showToast('فشل رفع الصورة','err');
+  }
+  input.value = '';
+}
+async function delPhoto(idx) {
+  if (!confirm('حذف هذه الصورة؟')) return;
+  const res = await fetch(`/admin/visits/delete-photo/${VISIT_ID}`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({index:idx})
+  });
+  const data = await res.json();
+  if (data.ok) { photos.splice(idx,1); renderPhotos(); showToast('تم الحذف ✓'); }
+}
+
+// ===== TOTAL CALCULATIONS =====
+function calcTotalCarpet() {
+  let total = 0;
+  rooms.forEach(r => { total += (r.area || 0); });
+  return total;
+}
+
+function calcTotalCurtains() {
+  let total = 0;
+  let totalCount = 0;
+  let details = [];
+  let totalPrice = 0;
+  windows.forEach((w, i) => {
+    const itemTotal = (w.width||0) * (w.count||1);
+    total += itemTotal;
+    totalCount += (w.count||1);
+    totalPrice += itemTotal * (w.pricePerMeter||0);
+    if (w.width > 0 && w.count > 0) {
+      details.push(`${w.location||'شباك'} ${w.count}×${w.width}=${itemTotal.toFixed(2)}م`);
+    }
+  });
+  return { total, totalCount, details, totalPrice };
+}
+
+function renderTotals() {
+  document.querySelectorAll('.total-summary').forEach(el => el.remove());
+  
+  // إجمالي الموكيت
+  if (rooms.length > 0) {
+    const carpetSec = document.querySelector('#panel-carpet .sec');
+    if (carpetSec) {
+      const div = document.createElement('div');
+      div.className = 'total-summary';
+      let totalArea = 0;
+      let totalPrice = 0;
+      rooms.forEach(r => {
+        totalArea += (r.area || 0);
+        totalPrice += (r.area || 0) * (r.pricePerMeter || 0);
+      });
+      div.innerHTML = `
+        <div class="total-item" style="flex-wrap:wrap;">
+          <i class="fa-solid fa-border-all"></i>
+          <span>إجمالي الموكيت:</span>
+          <span class="total-value">${totalArea.toFixed(2)}</span>
+          <span class="total-unit">م²</span>
+          <span class="total-count">(${rooms.length} غرفة)</span>
+          <span style="color:#d4af37;font-size:13px;margin-right:10px;">| الإجمالي: ${totalPrice.toFixed(2)} ₪</span>
+        </div>
+      `;
+      const roomList = document.getElementById('roomList');
+      if (roomList) {
+        roomList.parentNode.insertBefore(div, roomList.nextSibling);
+      }
+    }
+  }
+  
+  // إجمالي البرادي
+  if (windows.length > 0) {
+    const winSec = document.querySelector('#panel-windows .sec');
+    if (winSec) {
+      const result = calcTotalCurtains();
+      let detailsHtml = '';
+      if (result.details.length > 0) {
+        detailsHtml = `<div style="font-size:11px;color:var(--text-muted);margin-top:5px;padding-top:5px;border-top:1px dashed rgba(212,175,55,.2);">`;
+        detailsHtml += result.details.map(d => `<div>• ${d}</div>`).join('');
+        detailsHtml += `</div>`;
+      }
+      
+      const div = document.createElement('div');
+      div.className = 'total-summary';
+      div.innerHTML = `
+        <div class="total-item" style="flex-wrap:wrap;">
+          <i class="fa-solid fa-window-maximize"></i>
+          <span>إجمالي البرادي:</span>
+          <span class="total-value">${result.total.toFixed(2)}</span>
+          <span class="total-unit">م</span>
+          <span class="total-count">(${result.totalCount} قطعة - ${windows.length} نوع)</span>
+          <span style="color:#d4af37;font-size:13px;margin-right:10px;">| الإجمالي: ${result.totalPrice.toFixed(2)} ₪</span>
+        </div>
+        ${detailsHtml}
+      `;
+      const winList = document.getElementById('windowList');
+      if (winList) {
+        winList.parentNode.insertBefore(div, winList.nextSibling);
+      }
+    }
+  }
+}
+
+// ===== CANVAS ENGINE =====
+const cvs = {
+  qc: document.getElementById('cvQaada'),
+  wc: document.getElementById('cvWin')
+};
+const ctxs = { qc: cvs.qc.getContext('2d'), wc: cvs.wc.getContext('2d') };
+const cvState = {
+  qc: { tool:'pencil', color:'#1e293b', size:3, drawing:false, sx:0, sy:0, snap:null, undo:[] },
+  wc: { tool:'pencil', color:'#1e293b', size:3, drawing:false, sx:0, sy:0, snap:null, undo:[] }
+};
+
+function initCV(id) {
+  const ctx = ctxs[id];
+  ctx.fillStyle = 'white'; ctx.fillRect(0,0,cvs[id].width,cvs[id].height);
+  saveCVState(id);
+}
+function saveCVState(id) {
+  const st = cvState[id];
+  st.undo.push(ctxs[id].getImageData(0,0,cvs[id].width,cvs[id].height));
+  if (st.undo.length > 25) st.undo.shift();
+}
+function undoCV(id) {
+  const st = cvState[id];
+  if (st.undo.length > 1) { st.undo.pop(); ctxs[id].putImageData(st.undo[st.undo.length-1],0,0); }
+}
+function clearCV(id) {
+  if (confirm('مسح الرسم كاملاً؟')) {
+    cvState[id].undo = [];
+    ctxs[id].fillStyle = 'white'; ctxs[id].fillRect(0,0,cvs[id].width,cvs[id].height);
+    saveCVState(id);
+  }
+}
+function setCTool(t, id, btn) {
+  cvState[id].tool = t;
+  const container = document.getElementById(id + 'Tools');
+  container.querySelectorAll('.ctool').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+function getPos(e, id) {
+  const r = cvs[id].getBoundingClientRect();
+  const sx = cvs[id].width / r.width, sy = cvs[id].height / r.height;
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x:(cx-r.left)*sx, y:(cy-r.top)*sy };
+}
+
+function drawAngle(ctx, x, y, endX, endY, color, size) {
+  const dx = endX - x;
+  const dy = endY - y;
+  const length = Math.sqrt(dx*dx + dy*dy);
+  const maxLength = 200;
+  const actualLength = Math.min(length, maxLength);
+  
+  const hLength = actualLength * 0.7;
+  const vLength = actualLength * 0.7;
+  
+  ctx.strokeStyle = color;
+  ctx.lineWidth = size;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + hLength, y);
+  ctx.stroke();
+  
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y + vLength);
+  ctx.stroke();
+  
+  const cornerSize = 15;
+  ctx.beginPath();
+  ctx.moveTo(x + cornerSize, y);
+  ctx.lineTo(x + cornerSize, y + cornerSize);
+  ctx.lineTo(x, y + cornerSize);
+  ctx.stroke();
+  
+  const endpoints = [
+    { x: x + hLength, y: y },
+    { x: x, y: y + vLength }
+  ];
+  ctx.fillStyle = '#3b82f6';
+  endpoints.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+}
+
+function startDraw(e, id) {
+  const st = cvState[id]; 
+  const p = getPos(e,id);
+  st.drawing = true;
+  st.sx = p.x;
+  st.sy = p.y;
+  const ctx = ctxs[id];
+  
+  saveCVState(id);
+  
+  if (st.tool === 'pencil' || st.tool === 'eraser') {
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.strokeStyle = st.tool === 'eraser' ? 'white' : st.color;
+    ctx.lineWidth = st.tool === 'eraser' ? st.size * 4 : st.size;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  } else {
+    st.snap = ctx.getImageData(0, 0, cvs[id].width, cvs[id].height);
+  }
+}
+
+function doDraw(e, id) {
+  const st = cvState[id];
+  if (!st.drawing) return;
+  const p = getPos(e, id);
+  const ctx = ctxs[id];
+  
+  if (st.tool === 'pencil' || st.tool === 'eraser') {
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  } else {
+    ctx.putImageData(st.snap, 0, 0);
+    
+    if (st.tool === 'line') {
+      ctx.beginPath();
+      ctx.strokeStyle = st.color;
+      ctx.lineWidth = st.size;
+      ctx.moveTo(st.sx, st.sy);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    } else if (st.tool === 'rect') {
+      ctx.strokeStyle = st.color;
+      ctx.lineWidth = st.size;
+      ctx.strokeRect(st.sx, st.sy, p.x - st.sx, p.y - st.sy);
+    } else if (st.tool === 'circle') {
+      ctx.strokeStyle = st.color;
+      ctx.lineWidth = st.size;
+      const rx = (p.x - st.sx) / 2;
+      const ry = (p.y - st.sy) / 2;
+      ctx.beginPath();
+      ctx.ellipse(st.sx + rx, st.sy + ry, Math.abs(rx), Math.abs(ry), 0, 0, 2 * Math.PI);
+      ctx.stroke();
+    } else if (st.tool === 'angle') {
+      drawAngle(ctx, st.sx, st.sy, p.x, p.y, st.color, st.size);
+    }
+  }
+}
+
+function endDraw(id) {
+  const st = cvState[id];
+  if (st.drawing) {
+    st.drawing = false;
+    saveCVState(id);
+  }
+}
+
+// Bind canvases
+['qc', 'wc'].forEach(id => {
+  cvs[id].addEventListener('mousedown', e => startDraw(e, id));
+  cvs[id].addEventListener('mousemove', e => doDraw(e, id));
+  cvs[id].addEventListener('mouseup', () => endDraw(id));
+  cvs[id].addEventListener('mouseleave', () => endDraw(id));
+  cvs[id].addEventListener('touchstart', e => { e.preventDefault(); startDraw(e, id); }, { passive: false });
+  cvs[id].addEventListener('touchmove', e => { e.preventDefault(); doDraw(e, id); }, { passive: false });
+  cvs[id].addEventListener('touchend', () => endDraw(id));
+  
+  function resize() {
+    const w = Math.min(cvs[id].parentElement.offsetWidth - 2, 880);
+    cvs[id].style.width = w + 'px';
+  }
+  resize();
+  window.addEventListener('resize', resize);
+});
+
+// Load saved canvas data
+const savedQaada = `<%- (vData.qaadaCanvasData || '').replace(/`/g,'\\`') %>`;
+const savedWin   = `<%- (vData.windowsCanvasData || '').replace(/`/g,'\\`') %>`;
+
+function loadCV(id, data) {
+  if (data) {
+    const img = new Image();
+    img.onload = () => { ctxs[id].drawImage(img, 0, 0); saveCVState(id); };
+    img.src = data;
+  } else {
+    initCV(id);
+  }
+}
+loadCV('qc', savedQaada);
+loadCV('wc', savedWin);
+
+// ===== SAVE =====
+async function saveVisit() {
+  const btn = document.querySelector('.btn-save');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ...';
+  
+  const payload = {
+    sofas, qaadas,
+    qaadaCanvasData: cvs.qc.toDataURL('image/png'),
+    rooms, windows,
+    windowsCanvasData: cvs.wc.toDataURL('image/png'),
+    generalNotes: document.getElementById('generalNotes').value,
+    visitDate: document.getElementById('visitDateInput').value
+  };
+  
+  const url = IS_NEW
+    ? `/admin/customers/${CUST_ID}/visits`
+    : `/admin/customers/${CUST_ID}/visits/${VISIT_ID}/update`;
+  
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    
+    if (data.ok) {
+      if (IS_NEW) {
+        showToast('✓ تم الحفظ، سيتم تحويلك لصفحة التعديل...');
+        setTimeout(() => {
+          window.location.href = `/admin/customers/${CUST_ID}/visits/${data.visitId}/edit`;
+        }, 1500);
+      } else {
+        showToast('✓ تم حفظ الزيارة بنجاح');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> حفظ الزيارة';
+      }
+    } else {
+      showToast('خطأ: ' + data.error, 'err');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> حفظ الزيارة';
+    }
+  } catch(e) {
+    showToast('خطأ في الاتصال', 'err');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> حفظ الزيارة';
+  }
+}
+
+// ===== INIT =====
+renderSofas();
+renderQaadas();
+renderRooms();
+renderWins();
+renderPhotos();
+renderTotals();
+</script>
+
+<%- include('../partials/admin-footer') %>

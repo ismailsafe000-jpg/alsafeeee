@@ -1,0 +1,38 @@
+{
+  "name": "@workspace/api-server",
+  "version": "1.0.0",
+  "description": "Saffi ERP — نظام إدارة معرض الصافي للمفروشات",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "echo 'No build step for CJS server'",
+    "typecheck": "echo 'No typecheck for CJS server'"
+  },
+  "overrides": {
+    "protobufjs": "^7.4.0"
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^7.0.0-rc13",
+    "archiver": "^7.0.1",
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
+    "connect-flash": "^0.1.1",
+    "connect-mongo": "^5.1.0",
+    "dotenv": "^16.6.1",
+    "ejs": "^3.1.10",
+    "express": "^4.22.2",
+    "express-rate-limit": "^7.5.1",
+    "express-session": "^1.19.0",
+    "helmet": "^8.2.0",
+    "moment": "^2.30.1",
+    "mongoose": "^8.24.1",
+    "multer": "^1.4.5-lts.1",
+    "node-cron": "^4.6.0",
+    "pdfkit": "^0.19.1",
+    "pino": "^9.14.0",
+    "qrcode": "^1.5.4"
+  }
+}

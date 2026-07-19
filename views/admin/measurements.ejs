@@ -1,0 +1,534 @@
+<%- include('../partials/admin-header') %>
+
+<style>
+.meas-header{background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:16px;padding:22px 28px;color:white;margin-bottom:24px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;}
+.meas-header .cust-info{display:flex;flex-direction:column;gap:4px;}
+.meas-header .cust-name{font-size:22px;font-weight:800;color:#d4af37;}
+.meas-header .cust-meta{font-size:13px;color:#94a3b8;display:flex;gap:18px;flex-wrap:wrap;}
+.meas-header .cust-meta span{display:flex;align-items:center;gap:5px;}
+.meas-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn-save-main{background:linear-gradient(135deg,#d4af37,#c5a030);color:white;border:none;padding:11px 24px;border-radius:10px;font-weight:700;font-size:14px;font-family:'Cairo',sans-serif;cursor:pointer;display:flex;align-items:center;gap:7px;transition:.2s;}
+.btn-save-main:hover{transform:scale(1.03);}
+.btn-print-main{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:white;padding:11px 20px;border-radius:10px;font-weight:600;font-size:14px;font-family:'Cairo',sans-serif;cursor:pointer;display:flex;align-items:center;gap:7px;}
+.btn-print-main:hover{background:rgba(255,255,255,.15);}
+.back-btn{color:#94a3b8;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:5px;margin-bottom:4px;}
+.back-btn:hover{color:#d4af37;}
+
+/* Tabs */
+.meas-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;background:var(--card-bg);border-radius:12px;padding:8px;border:1px solid var(--border-color);}
+.meas-tab{padding:9px 16px;border-radius:8px;border:none;background:transparent;color:var(--text-muted);font-family:'Cairo',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.meas-tab.active{background:linear-gradient(135deg,#d4af37,#c5a030);color:white;}
+.meas-tab:hover:not(.active){background:rgba(212,175,55,.1);color:#d4af37;}
+.tab-panel{display:none;animation:fadeIn .2s;}
+.tab-panel.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* Section cards */
+.sec-card{background:var(--card-bg);border-radius:14px;border:1px solid var(--border-color);padding:24px;margin-bottom:16px;}
+.sec-title{font-size:16px;font-weight:800;color:var(--text-main);margin-bottom:18px;display:flex;align-items:center;gap:8px;padding-bottom:12px;border-bottom:2px solid rgba(212,175,55,.3);}
+.sec-title i{color:#d4af37;}
+.form-label{font-weight:700;font-size:13px;color:var(--text-main);margin-bottom:5px;}
+.form-control,.form-select{border-radius:8px;border:1px solid var(--border-color);padding:9px 12px;background:var(--card-bg);color:var(--text-main);font-family:'Cairo',sans-serif;font-size:13px;width:100%;}
+.form-control:focus,.form-select:focus{border-color:#d4af37;outline:none;box-shadow:0 0 0 3px rgba(212,175,55,.15);}
+[data-theme="dark"] .form-control,[data-theme="dark"] .form-select{background:#1c2128;border-color:#30363d;color:#e6edf3;}
+
+/* Style image */
+.style-img-wrap{border:2px dashed var(--border-color);border-radius:10px;padding:12px;text-align:center;cursor:pointer;position:relative;transition:.2s;}
+.style-img-wrap:hover{border-color:#d4af37;}
+.style-img-preview{max-height:130px;border-radius:8px;display:none;}
+.style-img-label{font-size:12px;color:var(--text-muted);}
+
+/* Rooms / Windows */
+.item-row{background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:16px;margin-bottom:12px;position:relative;}
+.item-row .remove-btn{position:absolute;top:10px;left:10px;background:#fee2e2;border:none;color:#dc2626;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;}
+.item-row .remove-btn:hover{background:#dc2626;color:white;}
+.add-item-btn{width:100%;padding:10px;border:2px dashed rgba(212,175,55,.4);border-radius:10px;background:rgba(212,175,55,.05);color:#d4af37;font-family:'Cairo',sans-serif;font-weight:700;font-size:14px;cursor:pointer;transition:.2s;}
+.add-item-btn:hover{background:rgba(212,175,55,.1);border-color:#d4af37;}
+
+/* Canvas */
+#drawingCanvas{border:1px solid var(--border-color);border-radius:12px;cursor:crosshair;display:block;max-width:100%;touch-action:none;}
+.canvas-wrap{background:white;border-radius:12px;overflow:hidden;position:relative;}
+.canvas-tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center;}
+.tool-btn{padding:8px 14px;border:1px solid var(--border-color);border-radius:8px;background:var(--card-bg);color:var(--text-main);font-family:'Cairo',sans-serif;font-size:13px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:5px;}
+.tool-btn.active,.tool-btn:hover{background:rgba(212,175,55,.15);border-color:#d4af37;color:#d4af37;}
+.tool-sep{width:1px;height:30px;background:var(--border-color);}
+input[type="color"]{width:36px;height:36px;border:1px solid var(--border-color);border-radius:8px;cursor:pointer;padding:2px;}
+input[type="range"]{width:100px;}
+.canvas-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+
+/* Photos */
+.photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-top:14px;}
+.photo-item{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--border-color);}
+.photo-item img{width:100%;height:110px;object-fit:cover;display:block;}
+.photo-del{position:absolute;top:4px;left:4px;background:rgba(220,38,38,.85);color:white;border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;}
+.photo-upload-zone{border:2px dashed var(--border-color);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:.2s;}
+.photo-upload-zone:hover{border-color:#d4af37;background:rgba(212,175,55,.04);}
+
+/* Toast */
+.meas-toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;font-weight:700;font-size:14px;z-index:9999;display:none;font-family:'Cairo',sans-serif;}
+.meas-toast.ok{background:#dcfce7;color:#166534;border:1px solid #bbf7d0;}
+.meas-toast.err{background:#fee2e2;color:#dc2626;border:1px solid #fecaca;}
+
+/* Print */
+@media print{
+  .meas-header .meas-actions,.meas-tabs,.add-item-btn,.remove-btn,.canvas-tools,.canvas-actions,.no-print,nav,.photo-upload-zone{display:none!important;}
+  .tab-panel{display:block!important;}
+  body{background:white!important;}
+  .sec-card{break-inside:avoid;box-shadow:none!important;border:1px solid #ccc!important;}
+  .print-sig{display:flex!important;}
+  @page{size:A4;margin:12mm;}
+}
+.print-sig{display:none;justify-content:space-between;margin-top:30px;}
+.print-sig .sig-box{border-top:1px solid #000;width:160px;text-align:center;padding-top:6px;font-size:12px;}
+</style>
+
+<!-- Toast -->
+<div class="meas-toast" id="mToast"></div>
+
+<!-- Header -->
+<a href="/admin/customers" class="back-btn no-print"><i class="fa-solid fa-arrow-right"></i> العودة للزبائن</a>
+
+<div class="meas-header">
+  <div class="cust-info">
+    <div class="cust-name"><i class="fa-solid fa-user me-1"></i> <%= customer.fullName %></div>
+    <div class="cust-meta">
+      <% if(customer.phone){%><span><i class="fa-solid fa-phone"></i> <%= customer.phone %></span><%}%>
+      <% if(customer.address){%><span><i class="fa-solid fa-map-marker-alt"></i> <%= customer.address %></span><%}%>
+      <span><i class="fa-solid fa-calendar"></i>
+        <input type="date" id="measDate" value="<%= measurement.measurementDate ? new Date(measurement.measurementDate).toISOString().slice(0,10) : new Date().toISOString().slice(0,10) %>"
+          style="background:transparent;border:none;color:#94a3b8;font-family:'Cairo',sans-serif;font-size:13px;cursor:pointer;">
+      </span>
+    </div>
+  </div>
+  <div class="meas-actions">
+    <button class="btn-print-main no-print" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة</button>
+    <button class="btn-save-main no-print" onclick="saveAll()"><i class="fa-solid fa-floppy-disk"></i> حفظ المقاسات</button>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="meas-tabs no-print" id="tabsNav">
+  <button class="meas-tab active" onclick="switchTab('sofa',this)"><i class="fa-solid fa-couch"></i> الكنب</button>
+  <button class="meas-tab" onclick="switchTab('qaada',this)"><i class="fa-solid fa-chair"></i> القعدة</button>
+  <button class="meas-tab" onclick="switchTab('carpet',this)"><i class="fa-solid fa-border-all"></i> الموكيت</button>
+  <button class="meas-tab" onclick="switchTab('windows',this)"><i class="fa-solid fa-window-maximize"></i> البرادي</button>
+  <button class="meas-tab" onclick="switchTab('canvas',this)"><i class="fa-solid fa-pen-nib"></i> لوحة الرسم</button>
+  <button class="meas-tab" onclick="switchTab('photos',this)"><i class="fa-solid fa-images"></i> الصور</button>
+  <button class="meas-tab" onclick="switchTab('notes',this)"><i class="fa-solid fa-note-sticky"></i> ملاحظات</button>
+</div>
+
+<!-- ===== TAB: الكنب ===== -->
+<div class="tab-panel active" id="panel-sofa">
+  <div class="sec-card">
+    <div class="sec-title"><i class="fa-solid fa-couch"></i> بيانات الكنب</div>
+    <div class="row g-3">
+      <div class="col-md-4"><label class="form-label">نوع الكنب</label><input class="form-control" id="sofa_sofaType" value="<%= measurement.sofa && measurement.sofa.sofaType || '' %>"></div>
+      <div class="col-md-2"><label class="form-label">عدد المقاعد</label><input type="number" class="form-control" id="sofa_seats" value="<%= measurement.sofa && measurement.sofa.seats || '' %>"></div>
+      <div class="col-md-3"><label class="form-label">نوع الإسفنج</label><input class="form-control" id="sofa_foamType" value="<%= measurement.sofa && measurement.sofa.foamType || '' %>"></div>
+      <div class="col-md-3"><label class="form-label">نوع القماش</label><input class="form-control" id="sofa_fabricType" value="<%= measurement.sofa && measurement.sofa.fabricType || '' %>"></div>
+      <div class="col-md-3"><label class="form-label">اللون</label><input class="form-control" id="sofa_color" value="<%= measurement.sofa && measurement.sofa.color || '' %>"></div>
+      <div class="col-md-3"><label class="form-label">نوع الأرجل</label><input class="form-control" id="sofa_legType" value="<%= measurement.sofa && measurement.sofa.legType || '' %>"></div>
+      <div class="col-md-2"><label class="form-label">عدد المخدات</label><input type="number" class="form-control" id="sofa_cushionCount" value="<%= measurement.sofa && measurement.sofa.cushionCount || '' %>"></div>
+      <div class="col-md-4">
+        <label class="form-label">نوع الطقم (صورة الستايل)</label>
+        <div class="style-img-wrap" onclick="document.getElementById('sofa_styleFile').click()">
+          <img id="sofa_stylePreview" class="style-img-preview" src="<%= measurement.sofa && measurement.sofa.styleImage || '' %>"
+            <% if(measurement.sofa && measurement.sofa.styleImage){ %>style="display:block;"<% } %>>
+          <div class="style-img-label"><i class="fa-solid fa-image me-1"></i> اضغط لرفع صورة الستايل</div>
+          <input type="file" id="sofa_styleFile" accept="image/*" style="display:none" onchange="uploadStyle(this,'sofa','sofa_stylePreview','sofa_styleImage')">
+          <input type="hidden" id="sofa_styleImage" value="<%= measurement.sofa && measurement.sofa.styleImage || '' %>">
+        </div>
+      </div>
+      <div class="col-12"><label class="form-label">ملاحظات</label><textarea class="form-control" id="sofa_notes" rows="2"><%= measurement.sofa && measurement.sofa.notes || '' %></textarea></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TAB: القعدة ===== -->
+<div class="tab-panel" id="panel-qaada">
+  <div class="sec-card">
+    <div class="sec-title"><i class="fa-solid fa-chair"></i> بيانات القعدة</div>
+    <div class="row g-3">
+      <div class="col-md-4"><label class="form-label">نوع القعدة</label><input class="form-control" id="qaada_sofaType" value="<%= measurement.qaada && measurement.qaada.sofaType || '' %>"></div>
+      <div class="col-md-2"><label class="form-label">عدد المقاعد</label><input type="number" class="form-control" id="qaada_seats" value="<%= measurement.qaada && measurement.qaada.seats || '' %>"></div>
+      <div class="col-md-3"><label class="form-label">نوع الإسفنج</label><input class="form-control" id="qaada_foamType" value="<%= measurement.qaada && measurement.qaada.foamType || '' %>"></div>
+      <div class="col-md-3"><label class="form-label">نوع القماش</label><input class="form-control" id="qaada_fabricType" value="<%= measurement.qaada && measurement.qaada.fabricType || '' %>"></div>
+      <div class="col-md-3"><label class="form-label">اللون</label><input class="form-control" id="qaada_color" value="<%= measurement.qaada && measurement.qaada.color || '' %>"></div>
+      <div class="col-md-3"><label class="form-label">نوع الأرجل</label><input class="form-control" id="qaada_legType" value="<%= measurement.qaada && measurement.qaada.legType || '' %>"></div>
+      <div class="col-md-2"><label class="form-label">عدد المخدات</label><input type="number" class="form-control" id="qaada_cushionCount" value="<%= measurement.qaada && measurement.qaada.cushionCount || '' %>"></div>
+      <div class="col-md-4">
+        <label class="form-label">نوع الطقم (صورة الستايل)</label>
+        <div class="style-img-wrap" onclick="document.getElementById('qaada_styleFile').click()">
+          <img id="qaada_stylePreview" class="style-img-preview" src="<%= measurement.qaada && measurement.qaada.styleImage || '' %>"
+            <% if(measurement.qaada && measurement.qaada.styleImage){ %>style="display:block;"<% } %>>
+          <div class="style-img-label"><i class="fa-solid fa-image me-1"></i> اضغط لرفع صورة الستايل</div>
+          <input type="file" id="qaada_styleFile" accept="image/*" style="display:none" onchange="uploadStyle(this,'qaada','qaada_stylePreview','qaada_styleImage')">
+          <input type="hidden" id="qaada_styleImage" value="<%= measurement.qaada && measurement.qaada.styleImage || '' %>">
+        </div>
+      </div>
+      <div class="col-12"><label class="form-label">ملاحظات</label><textarea class="form-control" id="qaada_notes" rows="2"><%= measurement.qaada && measurement.qaada.notes || '' %></textarea></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TAB: الموكيت ===== -->
+<div class="tab-panel" id="panel-carpet">
+  <div class="sec-card">
+    <div class="sec-title"><i class="fa-solid fa-border-all"></i> الغرف والموكيت</div>
+    <div id="roomsList"></div>
+    <button class="add-item-btn no-print" onclick="addRoom()"><i class="fa-solid fa-plus me-1"></i> إضافة غرفة</button>
+  </div>
+</div>
+
+<!-- ===== TAB: البرادي ===== -->
+<div class="tab-panel" id="panel-windows">
+  <div class="sec-card">
+    <div class="sec-title"><i class="fa-solid fa-window-maximize"></i> الشبابيك والبرادي</div>
+    <div id="windowsList"></div>
+    <button class="add-item-btn no-print" onclick="addWindow()"><i class="fa-solid fa-plus me-1"></i> إضافة شباك</button>
+  </div>
+</div>
+
+<!-- ===== TAB: لوحة الرسم ===== -->
+<div class="tab-panel" id="panel-canvas">
+  <div class="sec-card">
+    <div class="sec-title"><i class="fa-solid fa-pen-nib"></i> لوحة الرسم</div>
+    <div class="canvas-tools no-print">
+      <button class="tool-btn active" id="tool-pencil" onclick="setTool('pencil',this)"><i class="fa-solid fa-pencil"></i> قلم</button>
+      <button class="tool-btn" id="tool-line" onclick="setTool('line',this)"><i class="fa-solid fa-minus"></i> خط</button>
+      <button class="tool-btn" id="tool-rect" onclick="setTool('rect',this)"><i class="fa-regular fa-square"></i> مربع</button>
+      <button class="tool-btn" id="tool-circle" onclick="setTool('circle',this)"><i class="fa-regular fa-circle"></i> دائرة</button>
+      <button class="tool-btn" id="tool-eraser" onclick="setTool('eraser',this)"><i class="fa-solid fa-eraser"></i> ممحاة</button>
+      <div class="tool-sep"></div>
+      <label style="font-size:12px;font-weight:600;">اللون</label>
+      <input type="color" id="penColor" value="#1e293b" onchange="updateColor()">
+      <label style="font-size:12px;font-weight:600;">السماكة</label>
+      <input type="range" id="penSize" min="1" max="20" value="3" oninput="updateSize()">
+      <span id="penSizeVal" style="font-size:12px;font-weight:700;min-width:22px;">3</span>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" onclick="undoDraw()"><i class="fa-solid fa-rotate-left"></i> تراجع</button>
+      <button class="tool-btn" onclick="clearCanvas()"><i class="fa-solid fa-trash"></i> مسح الكل</button>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="drawingCanvas" width="900" height="600"></canvas>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;"><i class="fa-solid fa-info-circle me-1"></i> يتم حفظ الرسم تلقائياً عند الضغط على "حفظ المقاسات"</div>
+  </div>
+</div>
+
+<!-- ===== TAB: الصور ===== -->
+<div class="tab-panel" id="panel-photos">
+  <div class="sec-card">
+    <div class="sec-title"><i class="fa-solid fa-images"></i> الصور</div>
+    <div class="photo-upload-zone no-print" onclick="document.getElementById('photoFileInput').click()">
+      <i class="fa-solid fa-cloud-arrow-up fa-2x mb-2" style="color:#d4af37;"></i>
+      <div style="font-weight:700;font-size:14px;">اضغط لرفع صور</div>
+      <div style="font-size:12px;color:var(--text-muted);">يمكن رفع أكثر من صورة (كنب، موكيت، شبابيك...)</div>
+      <input type="file" id="photoFileInput" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this)">
+    </div>
+    <div class="photos-grid" id="photosGrid"></div>
+  </div>
+</div>
+
+<!-- ===== TAB: الملاحظات ===== -->
+<div class="tab-panel" id="panel-notes">
+  <div class="sec-card">
+    <div class="sec-title"><i class="fa-solid fa-note-sticky"></i> ملاحظات عامة</div>
+    <textarea class="form-control" id="generalNotes" rows="8" placeholder="اكتب أي ملاحظات تخص الزبون أو التركيب..."><%= measurement.generalNotes || '' %></textarea>
+  </div>
+</div>
+
+<!-- Print signature -->
+<div class="print-sig">
+  <div class="sig-box">توقيع الفني</div>
+  <div class="sig-box">توقيع الزبون</div>
+</div>
+
+<script>
+const CUST_ID = '<%= customer._id %>';
+
+// ===== TABS =====
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.meas-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ===== TOAST =====
+function showToast(msg, type='ok') {
+  const t = document.getElementById('mToast');
+  t.textContent = msg; t.className = 'meas-toast ' + type; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// ===== ROOMS =====
+let rooms = <%- JSON.stringify(measurement.rooms || []) %>;
+
+function renderRooms() {
+  const el = document.getElementById('roomsList');
+  el.innerHTML = '';
+  rooms.forEach((r, i) => {
+    el.innerHTML += `
+    <div class="item-row">
+      <button class="remove-btn no-print" onclick="removeRoom(${i})"><i class="fa-solid fa-xmark"></i></button>
+      <div style="font-weight:800;color:#d4af37;margin-bottom:12px;"><i class="fa-solid fa-border-all me-1"></i> غرفة ${i+1}</div>
+      <div class="row g-2">
+        <div class="col-md-3"><label class="form-label">اسم الغرفة</label>
+          <input class="form-control" value="${escHtml(r.name||'')}" oninput="rooms[${i}].name=this.value"></div>
+        <div class="col-md-2"><label class="form-label">الطول (م)</label>
+          <input type="number" step="0.01" class="form-control" value="${r.length||''}" oninput="rooms[${i}].length=+this.value;calcArea(${i})"></div>
+        <div class="col-md-2"><label class="form-label">العرض (م)</label>
+          <input type="number" step="0.01" class="form-control" value="${r.width||''}" oninput="rooms[${i}].width=+this.value;calcArea(${i})"></div>
+        <div class="col-md-2"><label class="form-label">المساحة (م²)</label>
+          <input type="number" step="0.01" class="form-control" id="area_${i}" value="${r.area||''}" readonly style="background:rgba(212,175,55,.07);font-weight:700;"></div>
+        <div class="col-md-3"><label class="form-label">نوع الموكيت</label>
+          <input class="form-control" value="${escHtml(r.carpetType||'')}" oninput="rooms[${i}].carpetType=this.value"></div>
+        <div class="col-md-3"><label class="form-label">اللون</label>
+          <input class="form-control" value="${escHtml(r.color||'')}" oninput="rooms[${i}].color=this.value"></div>
+      </div>
+    </div>`;
+  });
+}
+function addRoom() { rooms.push({name:'',length:0,width:0,area:0,carpetType:'',color:''}); renderRooms(); }
+function removeRoom(i) { if(confirm('حذف هذه الغرفة؟')) { rooms.splice(i,1); renderRooms(); } }
+function calcArea(i) { const a = (rooms[i].length||0)*(rooms[i].width||0); rooms[i].area=a; const el=document.getElementById('area_'+i); if(el) el.value=a.toFixed(2); }
+
+// ===== WINDOWS =====
+let windows = <%- JSON.stringify(measurement.windows || []) %>;
+
+function renderWindows() {
+  const el = document.getElementById('windowsList');
+  el.innerHTML = '';
+  windows.forEach((w, i) => {
+    el.innerHTML += `
+    <div class="item-row">
+      <button class="remove-btn no-print" onclick="removeWindow(${i})"><i class="fa-solid fa-xmark"></i></button>
+      <div style="font-weight:800;color:#d4af37;margin-bottom:12px;"><i class="fa-solid fa-window-maximize me-1"></i> شباك ${i+1}</div>
+      <div class="row g-2">
+        <div class="col-md-3"><label class="form-label">اسم المكان</label>
+          <input class="form-control" value="${escHtml(w.location||'')}" oninput="windows[${i}].location=this.value" placeholder="غرفة ضيوف، مطبخ..."></div>
+        <div class="col-md-2"><label class="form-label">العرض (سم)</label>
+          <input type="number" class="form-control" value="${w.width||''}" oninput="windows[${i}].width=+this.value"></div>
+        <div class="col-md-2"><label class="form-label">الارتفاع (سم)</label>
+          <input type="number" class="form-control" value="${w.height||''}" oninput="windows[${i}].height=+this.value"></div>
+        <div class="col-md-2"><label class="form-label">عدد الفتحات</label>
+          <input type="number" class="form-control" value="${w.openings||1}" oninput="windows[${i}].openings=+this.value"></div>
+        <div class="col-md-3"><label class="form-label">نوع القماش</label>
+          <input class="form-control" value="${escHtml(w.fabricType||'')}" oninput="windows[${i}].fabricType=this.value"></div>
+        <div class="col-md-3"><label class="form-label">اللون</label>
+          <input class="form-control" value="${escHtml(w.color||'')}" oninput="windows[${i}].color=this.value"></div>
+        <div class="col-md-4">
+          <label class="form-label">نوع البرادي (اسم)</label>
+          <input class="form-control" value="${escHtml(w.curtainTypeName||'')}" oninput="windows[${i}].curtainTypeName=this.value"></div>
+        <div class="col-md-5">
+          <label class="form-label">نوع البرادي (صورة) <span style="font-size:11px;color:#94a3b8;">اختياري</span></label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            ${w.curtainTypeImage ? `<img src="${escHtml(w.curtainTypeImage)}" id="cimg_${i}" style="height:40px;border-radius:6px;border:1px solid #e2e8f0;">` : `<span id="cimg_${i}" style="font-size:12px;color:#94a3b8;">لا توجد صورة</span>`}
+            <label style="cursor:pointer;padding:6px 12px;background:rgba(212,175,55,.1);border:1px solid rgba(212,175,55,.3);border-radius:8px;font-size:12px;font-weight:700;color:#d4af37;white-space:nowrap;">
+              <i class="fa-solid fa-upload"></i> رفع
+              <input type="file" accept="image/*" style="display:none" onchange="uploadCurtainImg(this,${i})">
+            </label>
+          </div>
+        </div>
+        <div class="col-12"><label class="form-label">ملاحظات</label>
+          <textarea class="form-control" rows="2" oninput="windows[${i}].notes=this.value">${escHtml(w.notes||'')}</textarea></div>
+      </div>
+    </div>`;
+  });
+}
+function addWindow() { windows.push({location:'',width:0,height:0,curtainTypeName:'',curtainTypeImage:'',fabricType:'',color:'',openings:1,notes:''}); renderWindows(); }
+function removeWindow(i) { if(confirm('حذف هذا الشباك؟')) { windows.splice(i,1); renderWindows(); } }
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ===== STYLE IMAGE UPLOAD =====
+async function uploadStyle(input, section, previewId, hiddenId) {
+  if (!input.files[0]) return;
+  const fd = new FormData(); fd.append('image', input.files[0]);
+  const res = await fetch(`/admin/measurements/upload-style/${CUST_ID}/${section}`, { method:'POST', body:fd });
+  const data = await res.json();
+  if (data.ok) {
+    const img = document.getElementById(previewId);
+    img.src = data.url; img.style.display = 'block';
+    document.getElementById(hiddenId).value = data.url;
+  } else showToast('فشل رفع الصورة', 'err');
+}
+
+async function uploadCurtainImg(input, winIndex) {
+  if (!input.files[0]) return;
+  const fd = new FormData(); fd.append('image', input.files[0]);
+  const res = await fetch(`/admin/measurements/upload-curtain/${CUST_ID}`, { method:'POST', body:fd });
+  const data = await res.json();
+  if (data.ok) {
+    windows[winIndex].curtainTypeImage = data.url;
+    const el = document.getElementById('cimg_' + winIndex);
+    if (el) { el.tagName === 'IMG' ? el.src = data.url : el.outerHTML = `<img src="${data.url}" id="cimg_${winIndex}" style="height:40px;border-radius:6px;border:1px solid #e2e8f0;">`; }
+    showToast('تم رفع صورة البرادي ✓');
+  } else showToast('فشل رفع الصورة','err');
+}
+
+// ===== PHOTOS =====
+let photos = <%- JSON.stringify(measurement.photos || []) %>;
+
+function renderPhotos() {
+  const grid = document.getElementById('photosGrid');
+  grid.innerHTML = '';
+  photos.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'photo-item';
+    div.innerHTML = `<img src="${escHtml(p.url)}" alt="صورة ${i+1}">
+      <button class="photo-del no-print" onclick="deletePhoto(${i})" title="حذف"><i class="fa-solid fa-trash"></i></button>`;
+    grid.appendChild(div);
+  });
+}
+
+async function uploadPhotos(input) {
+  const files = [...input.files];
+  for (const file of files) {
+    const fd = new FormData(); fd.append('photo', file);
+    const res = await fetch(`/admin/measurements/upload-photo/${CUST_ID}`, { method:'POST', body:fd });
+    const data = await res.json();
+    if (data.ok) { photos.push({ url: data.url, caption: '' }); renderPhotos(); showToast('تم رفع الصورة ✓'); }
+    else showToast('فشل رفع الصورة','err');
+  }
+  input.value = '';
+}
+
+async function deletePhoto(index) {
+  if (!confirm('حذف هذه الصورة؟')) return;
+  const res = await fetch(`/admin/measurements/delete-photo/${CUST_ID}`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({index})
+  });
+  const data = await res.json();
+  if (data.ok) { photos.splice(index,1); renderPhotos(); showToast('تم حذف الصورة ✓'); }
+}
+
+// ===== CANVAS DRAWING =====
+const canvas = document.getElementById('drawingCanvas');
+const ctx = canvas.getContext('2d');
+let tool = 'pencil', isDrawing = false, startX=0, startY=0;
+let penColor = '#1e293b', penSize = 3;
+let undoStack = [], snapshot = null;
+
+// Resize canvas to fill container
+function resizeCanvas() {
+  const wrap = canvas.parentElement;
+  const w = Math.min(wrap.offsetWidth - 2, 900);
+  canvas.style.width = w + 'px';
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Load saved canvas
+const savedCanvas = `<%- (measurement.canvasData || '').replace(/`/g,'\\`') %>`;
+if (savedCanvas) {
+  const img = new Image();
+  img.onload = () => { ctx.drawImage(img, 0, 0); saveState(); };
+  img.src = savedCanvas;
+} else {
+  ctx.fillStyle = 'white'; ctx.fillRect(0,0,canvas.width,canvas.height); saveState();
+}
+
+function saveState() { undoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height)); if(undoStack.length>25)undoStack.shift(); }
+function undoDraw() { if(undoStack.length>1){undoStack.pop();ctx.putImageData(undoStack[undoStack.length-1],0,0);} }
+function clearCanvas() { if(confirm('مسح الرسم كاملاً؟')){undoStack=[];ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);saveState();} }
+
+function setTool(t, btn) { tool=t; document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+function updateColor() { penColor = document.getElementById('penColor').value; ctx.strokeStyle=penColor; }
+function updateSize() { penSize=+document.getElementById('penSize').value; document.getElementById('penSizeVal').textContent=penSize; }
+
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / r.width, scaleY = canvas.height / r.height;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x:(clientX-r.left)*scaleX, y:(clientY-r.top)*scaleY };
+}
+
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', endDraw);
+canvas.addEventListener('mouseleave', endDraw);
+canvas.addEventListener('touchstart', e=>{e.preventDefault();startDraw(e);},{passive:false});
+canvas.addEventListener('touchmove', e=>{e.preventDefault();draw(e);},{passive:false});
+canvas.addEventListener('touchend', endDraw);
+
+function startDraw(e) {
+  isDrawing=true;
+  const p=getPos(e); startX=p.x; startY=p.y;
+  if(tool==='pencil'||tool==='eraser'){
+    ctx.beginPath(); ctx.moveTo(startX,startY);
+    ctx.strokeStyle = tool==='eraser'?'white':penColor;
+    ctx.lineWidth = tool==='eraser'?penSize*4:penSize;
+    ctx.lineCap='round'; ctx.lineJoin='round';
+  }
+  snapshot = ctx.getImageData(0,0,canvas.width,canvas.height);
+}
+
+function draw(e) {
+  if(!isDrawing) return;
+  const p=getPos(e);
+  if(tool==='pencil'||tool==='eraser'){
+    ctx.lineTo(p.x,p.y); ctx.stroke();
+  } else {
+    ctx.putImageData(snapshot,0,0);
+    ctx.beginPath(); ctx.strokeStyle=penColor; ctx.lineWidth=penSize; ctx.lineCap='round';
+    if(tool==='line'){ctx.moveTo(startX,startY);ctx.lineTo(p.x,p.y);ctx.stroke();}
+    else if(tool==='rect'){ctx.strokeRect(startX,startY,p.x-startX,p.y-startY);}
+    else if(tool==='circle'){
+      const rx=(p.x-startX)/2, ry=(p.y-startY)/2;
+      ctx.ellipse(startX+rx,startY+ry,Math.abs(rx),Math.abs(ry),0,0,2*Math.PI); ctx.stroke();
+    }
+  }
+}
+
+function endDraw() { if(isDrawing){isDrawing=false;saveState();} }
+
+// ===== SAVE ALL =====
+async function saveAll() {
+  const sofa = {
+    sofaType: document.getElementById('sofa_sofaType').value,
+    seats: +document.getElementById('sofa_seats').value||0,
+    foamType: document.getElementById('sofa_foamType').value,
+    fabricType: document.getElementById('sofa_fabricType').value,
+    color: document.getElementById('sofa_color').value,
+    legType: document.getElementById('sofa_legType').value,
+    cushionCount: +document.getElementById('sofa_cushionCount').value||0,
+    styleImage: document.getElementById('sofa_styleImage').value,
+    notes: document.getElementById('sofa_notes').value
+  };
+  const qaada = {
+    sofaType: document.getElementById('qaada_sofaType').value,
+    seats: +document.getElementById('qaada_seats').value||0,
+    foamType: document.getElementById('qaada_foamType').value,
+    fabricType: document.getElementById('qaada_fabricType').value,
+    color: document.getElementById('qaada_color').value,
+    legType: document.getElementById('qaada_legType').value,
+    cushionCount: +document.getElementById('qaada_cushionCount').value||0,
+    styleImage: document.getElementById('qaada_styleImage').value,
+    notes: document.getElementById('qaada_notes').value
+  };
+  const canvasData = canvas.toDataURL('image/png');
+  const payload = {
+    sofa, qaada, rooms, windows, canvasData,
+    generalNotes: document.getElementById('generalNotes').value,
+    measurementDate: document.getElementById('measDate').value
+  };
+  try {
+    const res = await fetch(`/admin/measurements/save/${CUST_ID}`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(data.ok) showToast('✓ تم حفظ المقاسات بنجاح');
+    else showToast('خطأ في الحفظ: ' + data.error, 'err');
+  } catch(e){ showToast('خطأ في الاتصال','err'); }
+}
+
+// Init
+renderRooms();
+renderWindows();
+renderPhotos();
+</script>
+
+<%- include('../partials/admin-footer') %>

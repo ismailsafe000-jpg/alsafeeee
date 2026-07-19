@@ -1,0 +1,321 @@
+<%- include('../partials/admin-header') %>
+<style>
+  .inv-form-wrap { max-width: 960px; margin: 0 auto; }
+  .form-section {
+    background: var(--card-bg, white);
+    border-radius: 14px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    padding: 22px 26px;
+    margin-bottom: 20px;
+  }
+  .form-section h5 {
+    font-size: 15px; font-weight: 800; color: var(--text-main, #1e293b);
+    border-bottom: 2px solid var(--border-color, #e2e8f0);
+    padding-bottom: 10px; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .item-row {
+    background: var(--table-hover, #f8fafc);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .item-row .remove-btn {
+    position: absolute; top: 8px; left: 10px;
+    background: #fee2e2; border: none; color: #dc2626;
+    border-radius: 6px; padding: 3px 8px; cursor: pointer;
+    font-size: 12px;
+  }
+  .item-row .remove-btn:hover { background: #fca5a5; }
+  .unit-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 700; background: rgba(212,175,55,0.15);
+    color: #92400e; margin-right: 6px;
+  }
+  [data-theme="dark"] .unit-badge { color: #d4af37; }
+  .qty-computed {
+    background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.3);
+    border-radius: 8px; padding: 6px 12px; font-weight: 800; font-size: 14px;
+    color: #92400e; text-align: center; min-width: 80px;
+  }
+  [data-theme="dark"] .qty-computed { color: #d4af37; }
+  .total-bar {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    border-radius: 12px; padding: 18px 24px; color: white; margin-top: 16px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+  }
+  .total-bar .tb-item { display: flex; flex-direction: column; align-items: center; }
+  .total-bar .tb-lbl { font-size: 12px; color: #94a3b8; }
+  .total-bar .tb-val { font-size: 22px; font-weight: 800; color: #d4af37; }
+
+  @media (max-width: 768px) {
+    .form-section { padding: 16px 14px; }
+    .item-row { padding: 14px 12px 12px; }
+    .total-bar { gap: 14px; padding: 14px 16px; }
+    .total-bar .tb-val { font-size: 17px; }
+  }
+</style>
+
+<div class="inv-form-wrap">
+
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+  <h2 class="section-title mb-0">
+    <i class="fa-solid fa-pen-to-square"></i>
+    تعديل فاتورة: <span style="color:#d4af37;"><%= invoice.invoiceNumber %></span>
+  </h2>
+  <a href="/admin/invoices/view/<%= invoice._id %>" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-right"></i> رجوع للفاتورة
+  </a>
+</div>
+
+<form action="/admin/invoices/edit/<%= invoice._id %>" method="POST" id="invEditForm">
+
+  <!-- ========== 1. معلومات الفاتورة ========== -->
+  <div class="form-section">
+    <h5><i class="fa-solid fa-info-circle" style="color:#d4af37;"></i> معلومات الفاتورة</h5>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label fw-bold">نوع العميل</label>
+        <select name="type" id="typeSelect" class="form-select" onchange="filterParty(this.value)">
+          <option value="customer" <%= invoice.type === 'customer' ? 'selected' : '' %>>زبون</option>
+          <option value="dealer" <%= invoice.type === 'dealer' ? 'selected' : '' %>>تاجر</option>
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label fw-bold">اسم الزبون / التاجر</label>
+        <select name="partyId" id="partySelect" class="form-select">
+          <% customers.forEach(c => { %>
+            <option value="<%= c._id %>" data-type="customer"
+              <%= String(invoice.partyId) === String(c._id) ? 'selected' : '' %>><%= c.fullName %></option>
+          <% }) %>
+          <% dealers.forEach(d => { %>
+            <option value="<%= d._id %>" data-type="dealer"
+              <%= String(invoice.partyId) === String(d._id) ? 'selected' : '' %>><%= d.fullName %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-bold">تاريخ الفاتورة</label>
+        <input type="datetime-local" name="invoiceDate" class="form-control"
+               value="<%= new Date(invoice.invoiceDate).toISOString().slice(0,16) %>">
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 2. الأصناف ========== -->
+  <div class="form-section">
+    <h5><i class="fa-solid fa-list-check" style="color:#d4af37;"></i> تفاصيل الأصناف</h5>
+
+    <div id="itemsContainer"></div>
+
+    <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="addItemRow()">
+      <i class="fa-solid fa-plus"></i> إضافة صنف جديد
+    </button>
+
+    <div class="row g-3 mt-3 align-items-center">
+      <div class="col-md-4">
+        <label class="form-label fw-bold">خصم (<%= settings.currency || '₪' %>)</label>
+        <input type="number" name="discount" id="discountInput" class="form-control"
+               value="<%= invoice.discount || 0 %>" min="0" step="0.01" oninput="calculateTotal()">
+      </div>
+      <div class="col-md-5">
+        <label class="form-label fw-bold">ملاحظات</label>
+        <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات اختيارية..."><%= invoice.notes || '' %></textarea>
+      </div>
+    </div>
+
+    <div class="total-bar mt-3">
+      <div class="tb-item">
+        <span class="tb-lbl">المجموع الفرعي</span>
+        <span class="tb-val" id="subtotalDisplay">0</span>
+      </div>
+      <div style="color:#475569; font-size:20px;">−</div>
+      <div class="tb-item">
+        <span class="tb-lbl">الخصم</span>
+        <span class="tb-val" id="discountDisplay" style="color:#4ade80;">0</span>
+      </div>
+      <div style="color:#475569; font-size:20px;">=</div>
+      <div class="tb-item">
+        <span class="tb-lbl">الإجمالي النهائي <%= settings.currency || '₪' %></span>
+        <span class="tb-val" id="totalDisplay" style="color:#f87171; font-size:26px;">0</span>
+      </div>
+      <input type="hidden" name="totalAmount" id="totalAmount" value="0">
+      <input type="hidden" name="subtotal" id="subtotalHidden" value="0">
+    </div>
+  </div>
+
+  <div class="d-flex gap-3 mb-5">
+    <button type="submit" class="btn btn-gold px-5" style="font-size:16px; padding:12px 40px;">
+      <i class="fa-solid fa-floppy-disk"></i> حفظ التعديلات
+    </button>
+    <a href="/admin/invoices/view/<%= invoice._id %>" class="btn btn-outline-secondary px-4">إلغاء</a>
+  </div>
+
+</form>
+</div>
+
+<script>
+const CUSTOMERS = <%- JSON.stringify(customers.map(c => ({ id: String(c._id), name: c.fullName }))) %>;
+const DEALERS   = <%- JSON.stringify(dealers.map(d => ({ id: String(d._id), name: d.fullName }))) %>;
+const CURRENT_TYPE = '<%= invoice.type %>';
+const CURRENT_PARTY_ID = '<%= String(invoice.partyId) %>';
+
+// الأصناف الموجودة مسبقاً
+const EXISTING_ITEMS = <%- JSON.stringify(invoice.items) %>;
+
+function filterParty(type) {
+  const sel = document.getElementById('partySelect');
+  const all = type === 'customer' ? CUSTOMERS : DEALERS;
+  sel.innerHTML = all.map(p =>
+    `<option value="${p.id}" ${p.id === CURRENT_PARTY_ID && type === CURRENT_TYPE ? 'selected' : ''}>${p.name}</option>`
+  ).join('');
+}
+
+function makeRow(item) {
+  const div = document.createElement('div');
+  div.className = 'item-row';
+  const type  = item ? item.quantityType : 'piece';
+  const len   = item ? (item.length || item.quantity || 1) : 1;
+  const wid   = item ? (item.width || 1) : 1;
+  const price = item ? item.unitPrice : 0;
+  const desc  = item ? item.description : '';
+
+  div.innerHTML = `
+    <button type="button" class="remove-btn" onclick="removeRow(this)">
+      <i class="fa-solid fa-times"></i> حذف
+    </button>
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-bold" style="font-size:12px;">الصنف / البيان</label>
+        <input class="form-control item-desc" placeholder="اسم الصنف أو البيان..." value="${desc}" required>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label fw-bold" style="font-size:12px;">نوع الوحدة</label>
+        <select class="form-select unit-type" onchange="onUnitChange(this)">
+          <option value="piece" ${type==='piece'?'selected':''}>كمية (حبة)</option>
+          <option value="meter" ${type==='meter'?'selected':''}>متر طولي</option>
+          <option value="sqmeter" ${type==='sqmeter'?'selected':''}>متر مربع</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="length-group">
+          <label class="form-label fw-bold qty-label" style="font-size:12px;">
+            ${type==='sqmeter'?'الطول (م)':type==='meter'?'الطول (م)':'الكمية'}
+          </label>
+          <input type="number" class="form-control item-length" placeholder="0" min="0" step="any"
+                 value="${type==='piece'?(item?item.quantity:1):len}" oninput="calculateRow(this.closest('.item-row'))">
+        </div>
+      </div>
+      <div class="col-6 col-md-2 width-group" style="${type==='sqmeter'?'':'display:none;'}">
+        <label class="form-label fw-bold" style="font-size:12px;">العرض (م)</label>
+        <input type="number" class="form-control item-width" placeholder="0" min="0" step="any"
+               value="${wid}" oninput="calculateRow(this.closest('.item-row'))">
+      </div>
+      <div class="col-6 col-md-1" style="min-width:80px;">
+        <label class="form-label fw-bold" style="font-size:12px;">الإجمالي</label>
+        <div class="qty-computed">—</div>
+        <input type="hidden" class="item-qty-hidden" value="${item ? item.quantity : 1}">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label fw-bold" style="font-size:12px;">سعر الوحدة</label>
+        <input type="number" class="form-control item-price" placeholder="0.00" min="0" step="any"
+               value="${price}" oninput="calculateRow(this.closest('.item-row'))">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label fw-bold" style="font-size:12px;">الإجمالي</label>
+        <input type="number" class="form-control item-total fw-bold text-danger" readonly value="${item ? item.total : 0}">
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+function addItemRow(item) {
+  const container = document.getElementById('itemsContainer');
+  const row = makeRow(item || null);
+  container.appendChild(row);
+  calculateRow(row);
+}
+
+function removeRow(btn) {
+  const rows = document.querySelectorAll('.item-row');
+  if (rows.length <= 1) { alert('يجب أن تكون هناك صنف واحد على الأقل'); return; }
+  btn.closest('.item-row').remove();
+  calculateTotal();
+}
+
+function onUnitChange(sel) {
+  const row = sel.closest('.item-row');
+  const type = sel.value;
+  const widthGroup = row.querySelector('.width-group');
+  const qtyLabel   = row.querySelector('.qty-label');
+  if (type === 'sqmeter') { widthGroup.style.display = ''; qtyLabel.textContent = 'الطول (م)'; }
+  else if (type === 'meter') { widthGroup.style.display = 'none'; qtyLabel.textContent = 'الطول (م)'; }
+  else { widthGroup.style.display = 'none'; qtyLabel.textContent = 'الكمية'; }
+  calculateRow(row);
+}
+
+function calculateRow(row) {
+  const type   = row.querySelector('.unit-type').value;
+  const length = parseFloat(row.querySelector('.item-length').value) || 0;
+  const widthEl = row.querySelector('.item-width');
+  const width  = widthEl ? (parseFloat(widthEl.value) || 0) : 0;
+  const price  = parseFloat(row.querySelector('.item-price').value) || 0;
+  let qty;
+  if (type === 'sqmeter') qty = length * width;
+  else qty = length;
+
+  let display;
+  if (type === 'sqmeter') display = `${length}×${width}<br><small>${qty.toFixed(2)} م²</small>`;
+  else if (type === 'meter') display = `${qty.toFixed(2)} م`;
+  else display = `${qty}`;
+
+  row.querySelector('.qty-computed').innerHTML = display;
+  row.querySelector('.item-qty-hidden').value  = qty;
+  row.querySelector('.item-total').value = (qty * price).toFixed(2);
+  calculateTotal();
+}
+
+function calculateTotal() {
+  let subtotal = 0;
+  document.querySelectorAll('.item-total').forEach(inp => subtotal += parseFloat(inp.value) || 0);
+  const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+  const total = Math.max(0, subtotal - discount);
+  document.getElementById('subtotalDisplay').textContent = subtotal.toLocaleString('ar-EG');
+  document.getElementById('discountDisplay').textContent = discount.toLocaleString('ar-EG');
+  document.getElementById('totalDisplay').textContent    = total.toLocaleString('ar-EG');
+  document.getElementById('totalAmount').value = total.toFixed(2);
+  document.getElementById('subtotalHidden').value = subtotal.toFixed(2);
+}
+
+document.getElementById('invEditForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const items = [];
+  document.querySelectorAll('.item-row').forEach(row => {
+    const desc = row.querySelector('.item-desc').value.trim();
+    if (!desc) return;
+    const type   = row.querySelector('.unit-type').value;
+    const length = parseFloat(row.querySelector('.item-length').value) || 0;
+    const widthEl = row.querySelector('.item-width');
+    const width  = widthEl ? (parseFloat(widthEl.value) || 0) : 0;
+    const qty    = parseFloat(row.querySelector('.item-qty-hidden').value) || 0;
+    const price  = parseFloat(row.querySelector('.item-price').value) || 0;
+    const total  = parseFloat(row.querySelector('.item-total').value) || 0;
+    items.push({ description: desc, quantityType: type, length, width, quantity: qty, unitPrice: price, total });
+  });
+  if (items.length === 0) { alert('أضف صنفاً واحداً على الأقل'); return; }
+  const hidden = document.createElement('input');
+  hidden.type = 'hidden'; hidden.name = 'items'; hidden.value = JSON.stringify(items);
+  this.appendChild(hidden);
+  this.submit();
+});
+
+// تهيئة
+filterParty(CURRENT_TYPE);
+// تحميل الأصناف الموجودة
+EXISTING_ITEMS.forEach(item => addItemRow(item));
+</script>
+
+<%- include('../partials/admin-footer') %>

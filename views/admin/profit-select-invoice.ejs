@@ -1,0 +1,69 @@
+<%- include('../partials/admin-header') %>
+
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+  <h2 class="section-title mb-0">
+    <i class="fa-solid fa-file-invoice-dollar"></i> اختر فاتورة لإنشاء سجل أرباح
+  </h2>
+  <a href="/admin/profits" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-right"></i> رجوع للأرباح
+  </a>
+</div>
+
+<div class="mb-3">
+  <input type="text" id="invSearch" class="form-control" placeholder="ابحث برقم الفاتورة أو اسم العميل..." oninput="filterInvoices()">
+</div>
+
+<% if (invoices.length === 0) { %>
+  <div class="text-center py-5" style="background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border-color);">
+    <i class="fa-solid fa-file-invoice fa-3x mb-3" style="color: var(--primary-gold);"></i>
+    <h5 style="color: var(--text-muted);">لا توجد فواتير في النظام</h5>
+  </div>
+<% } else { %>
+<div class="table-responsive-wrap">
+  <table class="table table-luxury align-middle mb-0" id="invTable">
+    <thead>
+      <tr>
+        <th>رقم الفاتورة</th>
+        <th>اسم العميل</th>
+        <th>التاريخ</th>
+        <th>إجمالي الفاتورة</th>
+        <th>إجراء</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% invoices.forEach(inv => {
+        const used = usedInvoiceIds.includes(String(inv._id));
+      %>
+        <tr class="inv-row" data-search="<%= (inv.invoiceNumber + ' ' + inv.partyName).toLowerCase() %>">
+          <td><span class="badge-luxury"><%= inv.invoiceNumber %></span></td>
+          <td class="fw-bold"><%= inv.partyName %></td>
+          <td style="font-size:13px; white-space:nowrap;">
+            <%= new Date(inv.invoiceDate).toLocaleDateString('ar-EG', {year:'numeric',month:'2-digit',day:'2-digit'}) %>
+          </td>
+          <td class="fw-bold text-danger"><%= inv.totalAmount.toLocaleString('ar-EG') %> ₪</td>
+          <td>
+            <% if (used) { %>
+              <span class="badge bg-secondary rounded-pill">تم إضافتها مسبقاً</span>
+            <% } else { %>
+              <a href="/admin/profits/create/<%= inv._id %>" class="btn btn-sm btn-gold">
+                <i class="fa-solid fa-plus"></i> إضافة
+              </a>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<script>
+function filterInvoices() {
+  const q = document.getElementById('invSearch').value.trim().toLowerCase();
+  document.querySelectorAll('#invTable .inv-row').forEach(row => {
+    row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+  });
+}
+</script>
+
+<%- include('../partials/admin-footer') %>

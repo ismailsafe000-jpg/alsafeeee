@@ -1,0 +1,612 @@
+<%- include('../partials/admin-header') %>
+
+<%
+// ========== دوال تحويل الأرقام إلى كلمات ==========
+function numberToArabicWords(num) {
+    if (num === 0) return 'صفر';
+    if (num < 0) return 'سالب ' + numberToArabicWords(Math.abs(num));
+    
+    const ones = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
+    const onesFemale = ['', 'واحدة', 'اثنتان', 'ثلاث', 'أربع', 'خمس', 'ست', 'سبع', 'ثمان', 'تسع'];
+    const tens = ['', 'عشرة', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
+    const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+    
+    function convertUnderHundred(n, isFemale = false) {
+        if (n === 0) return '';
+        if (n < 10) {
+            return isFemale ? onesFemale[n] : ones[n];
+        }
+        if (n < 20) {
+            if (n === 10) return 'عشرة';
+            if (n === 11) return isFemale ? 'إحدى عشرة' : 'أحد عشر';
+            if (n === 12) return isFemale ? 'اثنتا عشرة' : 'اثنا عشر';
+            const num = n - 10;
+            if (isFemale) {
+                return onesFemale[num] + ' عشرة';
+            }
+            return ones[num] + ' عشر';
+        }
+        if (n < 100) {
+            const tensPart = Math.floor(n / 10);
+            const onesPart = n % 10;
+            if (onesPart === 0) return tens[tensPart];
+            const connector = ' و';
+            if (isFemale && onesPart > 2) {
+                return tens[tensPart] + connector + onesFemale[onesPart];
+            }
+            return tens[tensPart] + connector + (isFemale ? onesFemale[onesPart] : ones[onesPart]);
+        }
+        return '';
+    }
+    
+    function convertUnderThousand(n, isFemale = false) {
+        if (n === 0) return '';
+        const hundredsPart = Math.floor(n / 100);
+        const remainder = n % 100;
+        let result = '';
+        if (hundredsPart > 0) {
+            if (hundredsPart === 1 && remainder === 0) {
+                result = 'مائة';
+            } else if (hundredsPart === 2 && remainder === 0) {
+                result = 'مائتان';
+            } else if (hundredsPart === 2) {
+                result = 'مائتا';
+            } else {
+                result = hundreds[hundredsPart];
+                if (remainder > 0) result += ' و';
+            }
+        }
+        if (remainder > 0) {
+            result += convertUnderHundred(remainder, isFemale);
+        }
+        return result;
+    }
+    
+    function convertNumber(n) {
+        if (n === 0) return 'صفر';
+        let parts = [];
+        let numStr = n.toString();
+        let groups = [];
+        let temp = numStr;
+        while (temp.length > 0) {
+            let group = temp.slice(-3);
+            temp = temp.slice(0, -3);
+            groups.push(parseInt(group) || 0);
+        }
+        groups = groups.reverse();
+        
+        for (let i = 0; i < groups.length; i++) {
+            const group = groups[i];
+            if (group === 0) continue;
+            const groupIndex = groups.length - 1 - i;
+            let groupText = '';
+            
+            if (groupIndex === 0) {
+                groupText = convertUnderThousand(group, false);
+            } else if (groupIndex === 1) {
+                if (group === 1) {
+                    groupText = 'ألف';
+                } else if (group === 2) {
+                    groupText = 'ألفان';
+                } else if (group >= 3 && group <= 10) {
+                    groupText = convertUnderThousand(group, true) + ' آلاف';
+                } else {
+                    groupText = convertUnderThousand(group, false) + ' ألف';
+                }
+            } else if (groupIndex === 2) {
+                if (group === 1) {
+                    groupText = 'مليون';
+                } else if (group === 2) {
+                    groupText = 'مليونان';
+                } else if (group >= 3 && group <= 10) {
+                    groupText = convertUnderThousand(group, true) + ' ملايين';
+                } else {
+                    groupText = convertUnderThousand(group, false) + ' مليون';
+                }
+            } else if (groupIndex === 3) {
+                if (group === 1) {
+                    groupText = 'مليار';
+                } else if (group === 2) {
+                    groupText = 'ملياران';
+                } else if (group >= 3 && group <= 10) {
+                    groupText = convertUnderThousand(group, true) + ' مليارات';
+                } else {
+                    groupText = convertUnderThousand(group, false) + ' مليار';
+                }
+            }
+            
+            if (groupText) parts.push(groupText);
+        }
+        
+        return parts.join(' و ');
+    }
+    
+    return convertNumber(num);
+}
+
+function getAmountWords(amount) {
+    const parts = amount.toString().split('.');
+    const integerPart = parseInt(parts[0]);
+    const decimalPart = parts[1] ? parseInt(parts[1]) : 0;
+    
+    let result = '';
+    if (integerPart > 0) {
+        result = numberToArabicWords(integerPart);
+    } else {
+        result = 'صفر';
+    }
+    
+    if (decimalPart > 0) {
+        let decimalStr = decimalPart.toString();
+        while (decimalStr.endsWith('0')) {
+            decimalStr = decimalStr.slice(0, -1);
+        }
+        const decimalValue = parseInt(decimalStr);
+        if (decimalValue > 0) {
+            result += ' و ' + numberToArabicWords(decimalValue) + ' جزءاً من مائة';
+        }
+    }
+    
+    return result;
+}
+// ========== نهاية دوال التحويل ==========
+
+// حساب الرصيد المتوقع
+let expectedBalance = 0;
+let balanceDirection = '';
+if (isEdit && payment) {
+    const amount = payment.amount || 0;
+    const balanceBefore = payment.balanceBefore || 0;
+    const isReceipt = !payment.voucherType || payment.voucherType === 'receipt';
+    
+    if (payment.type === 'customer') {
+        // الزبون: قبض = ينقص، صرف = يزيد
+        if (isReceipt) {
+            expectedBalance = balanceBefore - amount;
+            balanceDirection = '📉 سينقص الرصيد (الزبون دفع)';
+        } else {
+            expectedBalance = balanceBefore + amount;
+            balanceDirection = '📈 سيزيد الرصيد (الزبون استلم)';
+        }
+    } else if (payment.type === 'dealer') {
+        // التاجر: قبض = يزيد، صرف = ينقص
+        if (isReceipt) {
+            expectedBalance = balanceBefore + amount;
+            balanceDirection = '📈 سيزيد الرصيد (التاجر دفع لك)';
+        } else {
+            expectedBalance = balanceBefore - amount;
+            balanceDirection = '📉 سينقص الرصيد (دفعت للتاجر)';
+        }
+    }
+}
+%>
+
+<style>
+  .voucher-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 18px; border-radius: 12px; font-size: 15px; font-weight: 800;
+    letter-spacing: 1px; font-family: monospace;
+  }
+  .badge-rc { background: #d1fae5; color: #065f46; border: 2px solid #6ee7b7; }
+  .badge-pv { background: #fee2e2; color: #991b1b; border: 2px solid #fca5a5; }
+  .section-card {
+    background: var(--card-bg); border-radius: 14px;
+    border: 1px solid var(--border-color); padding: 20px 24px; margin-bottom: 16px;
+  }
+  .section-card h6 {
+    font-size: 13px; font-weight: 800; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 16px;
+  }
+  .balance-preview-box {
+    background: #f0f9ff;
+    border: 2px solid #93c5fd;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 12px;
+    text-align: center;
+  }
+  .balance-preview-box .label {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .balance-preview-box .value {
+    font-size: 24px;
+    font-weight: 900;
+  }
+  .balance-preview-box .value.positive {
+    color: #065f46;
+  }
+  .balance-preview-box .value.negative {
+    color: #991b1b;
+  }
+  .amount-words-preview {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+  }
+</style>
+
+<h2 class="section-title">
+  <i class="fa-solid fa-receipt"></i>
+  <%= isEdit ? 'تعديل سند' : 'إضافة سند جديد' %>
+</h2>
+
+<form action="<%= isEdit ? '/admin/payments/edit/' + payment._id : '/admin/payments/add' %>" method="POST">
+
+  <!-- رقم السند + نوعه -->
+  <div class="section-card">
+    <h6><i class="fa-solid fa-hashtag me-2"></i>نوع السند ورقمه</h6>
+    <div class="row g-3 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label fw-bold">نوع السند</label>
+        <div class="d-flex gap-3">
+          <label class="d-flex align-items-center gap-2 p-3 rounded" style="cursor:pointer;border:2px solid var(--border-color);flex:1;"
+                 id="lbl-receipt">
+            <input type="radio" name="voucherType" value="receipt" id="vt-receipt"
+                   <%= (!isEdit || !payment.voucherType || payment.voucherType==='receipt') ? 'checked' : '' %>>
+            <span>
+              <i class="fa-solid fa-arrow-down-to-line text-success me-1"></i>
+              <strong>سند قبض</strong>
+              <div style="font-size:11px;color:var(--text-muted);">مال مستلم</div>
+            </span>
+          </label>
+          <label class="d-flex align-items-center gap-2 p-3 rounded" style="cursor:pointer;border:2px solid var(--border-color);flex:1;"
+                 id="lbl-payment">
+            <input type="radio" name="voucherType" value="payment" id="vt-payment"
+                   <%= (isEdit && payment.voucherType==='payment') ? 'checked' : '' %>>
+            <span>
+              <i class="fa-solid fa-arrow-up-from-line text-danger me-1"></i>
+              <strong>سند صرف</strong>
+              <div style="font-size:11px;color:var(--text-muted);">مال مدفوع</div>
+            </span>
+          </label>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">رقم السند (يولّد تلقائياً)</label>
+        <div class="voucher-badge badge-rc" id="voucherPreview">
+          <i class="fa-solid fa-receipt"></i>
+          <span id="vNumText"><%= isEdit ? payment.voucherNumber : previewRC %></span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">
+          <i class="fa-solid fa-info-circle"></i> يُحفظ تلقائياً عند الإنشاء
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-bold">التاريخ والوقت</label>
+        <input type="datetime-local" name="paymentDate" class="form-control"
+          value="<%= isEdit && payment.paymentDate ? new Date(payment.paymentDate).toISOString().slice(0,16) : new Date().toISOString().slice(0,16) %>">
+      </div>
+    </div>
+  </div>
+
+  <!-- نوع الحساب والاسم -->
+  <div class="section-card">
+    <h6><i class="fa-solid fa-user me-2"></i>الطرف الآخر</h6>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label fw-bold">نوع الحساب</label>
+        <select name="type" id="payType" class="form-select" onchange="updateBalancePreview()">
+          <option value="customer" <%= (!isEdit || payment.type === 'customer') ? 'selected' : '' %>>
+            <i class="fa-solid fa-user"></i> زبون
+          </option>
+          <option value="dealer" <%= (isEdit && payment.type === 'dealer') ? 'selected' : '' %>>
+            <i class="fa-solid fa-handshake"></i> تاجر
+          </option>
+        </select>
+        <small class="text-muted" id="partyTypeHint">
+          <% if(isEdit && payment.type === 'dealer') { %>
+            🔄 التاجر: قبض = يزيد الرصيد، صرف = ينقص الرصيد
+          <% } else { %>
+            👤 الزبون: قبض = ينقص الرصيد، صرف = يزيد الرصيد
+          <% } %>
+        </small>
+      </div>
+      <div class="col-md-8">
+        <label class="form-label fw-bold">اختيار الاسم</label>
+        <select name="partyId" id="payParty" class="form-select">
+          <% customers.forEach(c => { %>
+            <option value="<%= c._id %>" data-type="customer"
+              <%= (isEdit && payment.partyId && payment.partyId.toString() === c._id.toString()) ? 'selected' : '' %>>
+              <%= c.fullName %>
+            </option>
+          <% }) %>
+          <% dealers.forEach(d => { %>
+            <option value="<%= d._id %>" data-type="dealer"
+              <%= (isEdit && payment.partyId && payment.partyId.toString() === d._id.toString()) ? 'selected' : '' %>>
+              <%= d.fullName %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- المبلغ والعملة وطريقة الدفع -->
+  <div class="section-card">
+    <h6><i class="fa-solid fa-coins me-2"></i>بيانات المبلغ</h6>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label fw-bold">المبلغ</label>
+        <input type="number" name="amount" id="amountInput" class="form-control fw-bold" placeholder="0.00" step="0.01" required
+          value="<%= isEdit ? payment.amount : '' %>" oninput="updateBalancePreview(); updateAmountWords();">
+        <div class="amount-words-preview" id="amountWordsPreview">
+          <% if(isEdit && payment.amount) { %>
+            فقط <%= getAmountWords(payment.amount) %> لا غير
+          <% } %>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-bold">العملة</label>
+        <input name="currency" class="form-control" placeholder="₪"
+          value="<%= isEdit ? (payment.currency || settings.currency || '₪') : (settings.currency || '₪') %>">
+      </div>
+      <div class="col-md-5">
+        <label class="form-label fw-bold">طريقة الدفع</label>
+        <select name="paymentMethod" id="payMethod" class="form-select">
+          <option value="cash"          <%= (!isEdit || payment.paymentMethod==='cash') ? 'selected' : '' %>>💵 نقد</option>
+          <option value="bank_transfer" <%= (isEdit && payment.paymentMethod==='bank_transfer') ? 'selected' : '' %>>🏦 تحويل بنكي</option>
+          <option value="check"         <%= (isEdit && payment.paymentMethod==='check') ? 'selected' : '' %>>📄 شيك</option>
+          <option value="card"          <%= (isEdit && payment.paymentMethod==='card') ? 'selected' : '' %>>💳 بطاقة</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- معاينة الرصيد المتوقع -->
+    <div class="balance-preview-box" id="balancePreviewBox">
+      <div class="label">الرصيد المتوقع بعد السند</div>
+      <div class="value <%= expectedBalance >= 0 ? 'positive' : 'negative' %>" id="previewBalanceValue">
+        <%= expectedBalance ? expectedBalance.toLocaleString('ar-EG') : '0' %> <%= settings.currency || '₪' %>
+      </div>
+      <div class="label" id="previewDirection">
+        <%= balanceDirection || 'اختر النوع والمبلغ لمعرفة تأثير السند على الرصيد' %>
+      </div>
+    </div>
+  </div>
+
+  <!-- حقول البنك / الشيك -->
+  <div id="bankFields" class="section-card"
+    style="display:<%= (isEdit && payment.paymentMethod==='bank_transfer') ? 'block' : 'none' %>; border-color: #60a5fa;">
+    <h6><i class="fa-solid fa-building-columns me-2" style="color:#3b82f6;"></i>بيانات التحويل البنكي</h6>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label fw-bold">اسم البنك</label>
+        <input name="bankName" id="bankNameTransfer" class="form-control"
+          value="<%= isEdit ? (payment.bankName || '') : '' %>">
+      </div>
+    </div>
+  </div>
+
+  <div id="chequeFields" class="section-card"
+    style="display:<%= (isEdit && payment.paymentMethod==='check') ? 'block' : 'none' %>; border-color: #f59e0b;">
+    <h6><i class="fa-solid fa-money-check-dollar me-2" style="color:#d97706;"></i>بيانات الشيك</h6>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label fw-bold">رقم الشيك</label>
+        <input name="chequeNumber" class="form-control"
+          value="<%= isEdit ? (payment.chequeNumber || '') : '' %>">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">اسم البنك</label>
+        <input name="bankName" id="bankNameCheck" class="form-control"
+          value="<%= isEdit ? (payment.bankName || '') : '' %>">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">حالة الشيك</label>
+        <select name="chequeStatus" class="form-select">
+          <option value="pending"  <%= (!isEdit || payment.chequeStatus==='pending') ? 'selected' : '' %>>قيد الانتظار</option>
+          <option value="cleared"  <%= (isEdit && payment.chequeStatus==='cleared') ? 'selected' : '' %>>تم الصرف</option>
+          <option value="bounced"  <%= (isEdit && payment.chequeStatus==='bounced') ? 'selected' : '' %>>راجع / مرتجع</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">تاريخ الاستلام</label>
+        <input type="date" name="chequeReceivedDate" class="form-control"
+          value="<%= isEdit && payment.chequeReceivedDate ? new Date(payment.chequeReceivedDate).toISOString().slice(0,10) : '' %>">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">تاريخ استحقاق الشيك</label>
+        <input type="date" name="chequeDueDate" class="form-control"
+          value="<%= isEdit && payment.chequeDueDate ? new Date(payment.chequeDueDate).toISOString().slice(0,10) : '' %>">
+      </div>
+    </div>
+  </div>
+
+  <!-- ربط بفاتورة + البيانات -->
+  <div class="section-card">
+    <h6><i class="fa-solid fa-link me-2"></i>التفاصيل والربط</h6>
+    <div class="row g-3">
+      <div class="col-md-12">
+        <label class="form-label fw-bold">البيان</label>
+        <input name="description" class="form-control" placeholder="مثال: دفعة أولى على فاتورة الستائر"
+          value="<%= isEdit ? (payment.description || '') : '' %>">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">ربط بفاتورة <span style="font-weight:400;color:var(--text-muted);">(اختياري)</span></label>
+        <select name="invoiceId" class="form-select">
+          <option value="">بدون ربط بفاتورة</option>
+          <% invoices.forEach(i => { %>
+            <option value="<%= i._id %>"
+              <%= (isEdit && payment.invoiceId && payment.invoiceId.toString() === i._id.toString()) ? 'selected' : '' %>>
+              <%= i.invoiceNumber %> — <%= i.partyName %>
+              (<%= i.remainingBalance ? i.remainingBalance.toLocaleString('ar-EG') : '0' %> <%= settings.currency || '₪' %> متبقي)
+            </option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">اسم الموظف</label>
+        <input name="employeeName" class="form-control" placeholder="اسم الموظف المسؤول"
+          value="<%= isEdit ? (payment.employeeName || '') : '' %>">
+      </div>
+      <div class="col-md-12">
+        <label class="form-label fw-bold">الملاحظات <span style="font-weight:400;color:var(--text-muted);">(اختياري)</span></label>
+        <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية..."><%= isEdit ? (payment.notes || '') : '' %></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- أزرار -->
+  <div class="d-flex gap-3 mt-3">
+    <button type="submit" class="btn btn-gold flex-grow-1 py-2" style="font-size:15px;">
+      <i class="fa-solid fa-check-circle me-2"></i>
+      <%= isEdit ? 'حفظ التعديلات' : 'اعتماد السند' %>
+    </button>
+    <a href="/admin/payments" class="btn btn-outline-secondary px-4">
+      <i class="fa-solid fa-arrow-right me-1"></i> إلغاء
+    </a>
+  </div>
+</form>
+
+<script>
+  const previewRC = '<%= previewRC %>';
+  const previewPV = '<%= previewPV %>';
+
+  // تحديث معاينة رقم السند
+  function updateVoucherPreview() {
+    const vtR = document.getElementById('vt-receipt');
+    const isReceipt = vtR && vtR.checked;
+    const preview = document.getElementById('voucherPreview');
+    const txt = document.getElementById('vNumText');
+    if (isReceipt) {
+      preview.className = 'voucher-badge badge-rc';
+      txt.textContent = previewRC;
+    } else {
+      preview.className = 'voucher-badge badge-pv';
+      txt.textContent = previewPV;
+    }
+  }
+  document.querySelectorAll('[name="voucherType"]').forEach(r => r.addEventListener('change', updateVoucherPreview));
+  updateVoucherPreview();
+
+  // ========== دوال JavaScript لمعاينة الرصيد ==========
+  function updateBalancePreview() {
+    const voucherType = document.querySelector('input[name="voucherType"]:checked').value;
+    const partyType = document.getElementById('payType').value;
+    const amount = parseFloat(document.getElementById('amountInput').value) || 0;
+    const balanceBefore = <%= isEdit ? (payment.balanceBefore || 0) : 0 %>;
+    
+    let balanceAfter = 0;
+    let direction = '';
+    
+    if (partyType === 'customer') {
+      // الزبون: قبض = ينقص، صرف = يزيد
+      if (voucherType === 'receipt') {
+        balanceAfter = balanceBefore - amount;
+        direction = '📉 سينقص الرصيد (الزبون دفع)';
+      } else {
+        balanceAfter = balanceBefore + amount;
+        direction = '📈 سيزيد الرصيد (الزبون استلم)';
+      }
+    } else if (partyType === 'dealer') {
+      // التاجر: قبض = يزيد، صرف = ينقص
+      if (voucherType === 'receipt') {
+        balanceAfter = balanceBefore + amount;
+        direction = '📈 سيزيد الرصيد (التاجر دفع لك)';
+      } else {
+        balanceAfter = balanceBefore - amount;
+        direction = '📉 سينقص الرصيد (دفعت للتاجر)';
+      }
+    }
+    
+    const valueElement = document.getElementById('previewBalanceValue');
+    valueElement.textContent = balanceAfter.toLocaleString('ar-EG') + ' <%= settings.currency || '₪' %>';
+    valueElement.className = 'value ' + (balanceAfter >= 0 ? 'positive' : 'negative');
+    
+    document.getElementById('previewDirection').textContent = direction;
+    
+    // تحديث التلميح
+    const hintElement = document.getElementById('partyTypeHint');
+    if (partyType === 'dealer') {
+      hintElement.textContent = '🔄 التاجر: قبض = يزيد الرصيد، صرف = ينقص الرصيد';
+    } else {
+      hintElement.textContent = '👤 الزبون: قبض = ينقص الرصيد، صرف = يزيد الرصيد';
+    }
+  }
+
+  // تحديث عرض المبلغ بالكلمات
+  function updateAmountWords() {
+    const amount = parseFloat(document.getElementById('amountInput').value);
+    const preview = document.getElementById('amountWordsPreview');
+    if (amount && amount > 0) {
+      // استدعاء الدالة من الخادم
+      fetch('/api/amount-words?amount=' + amount)
+        .then(res => res.json())
+        .then(data => {
+          preview.textContent = 'فقط ' + data.words + ' لا غير';
+        })
+        .catch(() => {
+          preview.textContent = '';
+        });
+    } else {
+      preview.textContent = '';
+    }
+  }
+
+  // إظهار حقول الشيك أو البنك
+  function syncBankFieldsState(method){
+    const showCheque = method === 'check';
+    const showBank   = method === 'bank_transfer';
+    document.getElementById('chequeFields').style.display = showCheque ? 'block' : 'none';
+    document.getElementById('bankFields').style.display   = showBank ? 'block' : 'none';
+    // نعطّل الحقل غير الظاهر عشان ما ينبعتش مرتين باسم bankName (Array) عند الحفظ
+    document.getElementById('bankNameCheck').disabled    = !showCheque;
+    document.getElementById('bankNameTransfer').disabled = !showBank;
+  }
+  document.getElementById('payMethod').addEventListener('change', function(){
+    syncBankFieldsState(this.value);
+  });
+  syncBankFieldsState(document.getElementById('payMethod').value);
+
+  // قوائم الأطراف
+  const allCustomers = [<%- customers.map((c,i)=>`{id:'${c._id}',name:'${c.fullName.replace(/'/g,"\\'")}',type:'customer'}`).join(',') %>];
+  const allDealers   = [<%- dealers.map((d,i)=>`{id:'${d._id}',name:'${d.fullName.replace(/'/g,"\\'")}',type:'dealer'}`).join(',') %>];
+
+  document.getElementById('payType').addEventListener('change', function(){
+    const sel = document.getElementById('payParty');
+    sel.innerHTML = '';
+    const list = this.value === 'customer' ? allCustomers : allDealers;
+    list.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      sel.appendChild(opt);
+    });
+  });
+
+  // تصفية قائمة الأطراف عند التحميل
+  (function(){
+    const typeVal = document.getElementById('payType').value;
+    const sel = document.getElementById('payParty');
+    Array.from(sel.options).forEach(o => {
+      const dt = o.getAttribute('data-type');
+      if (dt && dt !== typeVal) o.style.display = 'none';
+      else o.style.display = '';
+    });
+  })();
+
+  // تلوين حدود نوع السند
+  document.querySelectorAll('[name="voucherType"]').forEach(r => {
+    r.addEventListener('change', () => {
+      document.getElementById('lbl-receipt').style.borderColor = r.value === 'receipt' && r.checked ? '#6ee7b7' : 'var(--border-color)';
+      document.getElementById('lbl-payment').style.borderColor = r.value === 'payment' && r.checked ? '#fca5a5' : 'var(--border-color)';
+      updateBalancePreview();
+    });
+  });
+  
+  // Initial border
+  const initReceipt = document.getElementById('vt-receipt').checked;
+  document.getElementById('lbl-receipt').style.borderColor = initReceipt ? '#6ee7b7' : 'var(--border-color)';
+  document.getElementById('lbl-payment').style.borderColor = !initReceipt ? '#fca5a5' : 'var(--border-color)';
+  
+  // تحديث معاينة الرصيد عند تحميل الصفحة
+  document.addEventListener('DOMContentLoaded', function() {
+    updateBalancePreview();
+  });
+</script>
+<%- include('../partials/admin-footer') %>

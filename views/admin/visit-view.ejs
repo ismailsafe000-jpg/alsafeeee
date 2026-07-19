@@ -1,0 +1,253 @@
+<%- include('../partials/admin-header') %>
+
+<style>
+.view-hdr{background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:16px;padding:20px 26px;color:white;margin-bottom:22px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;}
+.vnum{font-size:22px;font-weight:800;color:#d4af37;}
+.vmeta{font-size:13px;color:#94a3b8;margin-top:3px;display:flex;gap:16px;flex-wrap:wrap;}
+.view-actions{display:flex;gap:9px;flex-wrap:wrap;}
+.vabtn{padding:9px 16px;border-radius:9px;font-family:'Cairo',sans-serif;font-size:13px;font-weight:600;text-decoration:none;border:1px solid;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:.15s;}
+.vabtn-edit{background:rgba(212,175,55,.08);border-color:rgba(212,175,55,.3);color:#d4af37;}
+.vabtn-print{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.15);color:#cbd5e1;}
+.back-link{color:#94a3b8;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:5px;margin-bottom:6px;}
+.back-link:hover{color:#d4af37;}
+.sec{background:var(--card-bg);border-radius:14px;border:1px solid var(--border-color);padding:20px;margin-bottom:14px;}
+.sec-tit{font-size:15px;font-weight:800;color:var(--text-main);margin-bottom:16px;display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid rgba(212,175,55,.25);}
+.sec-tit i{color:#d4af37;}
+.item-block{background:rgba(212,175,55,.03);border:1px solid rgba(212,175,55,.15);border-radius:11px;padding:14px;margin-bottom:10px;}
+.item-ttl{font-weight:800;color:#d4af37;font-size:14px;margin-bottom:10px;}
+.info-row{display:flex;flex-wrap:wrap;gap:14px 22px;}
+.info-item{display:flex;flex-direction:column;gap:2px;min-width:110px;}
+.info-lbl{font-size:11px;color:var(--text-muted);font-weight:700;letter-spacing:.4px;}
+.info-val{font-weight:700;font-size:14px;color:var(--text-main);}
+.badge-val{background:rgba(212,175,55,.1);border:1px solid rgba(212,175,55,.2);color:#92400e;padding:2px 9px;border-radius:10px;font-size:13px;font-weight:700;}
+[data-theme="dark"] .badge-val{color:#d4af37;}
+.style-img{max-height:110px;border-radius:8px;border:1px solid var(--border-color);margin-top:8px;}
+.canvas-img{max-width:100%;border-radius:10px;border:1px solid var(--border-color);}
+.photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
+.photo-img{width:100%;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--border-color);}
+.price-tag{color:#d4af37;font-weight:800;font-size:15px;}
+.price-total{color:#d4af37;font-weight:900;font-size:16px;}
+
+.total-summary{background:rgba(212,175,55,.08);border:2px solid #d4af37;border-radius:10px;padding:14px 18px;margin-top:12px;}
+.total-summary .total-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-weight:700;font-size:14px;}
+.total-summary .total-item .total-value{color:#d4af37;font-size:20px;}
+.total-summary .total-item .total-unit{font-size:12px;color:#64748b;}
+.total-summary .total-item .total-count{font-size:12px;color:#64748b;}
+.total-summary .total-item .total-price{color:#d4af37;font-size:20px;margin-right:10px;}
+
+@media print{
+  .view-actions, .back-link, .vabtn-print, .vabtn-edit, .no-print, nav, .navbar{display:none!important;}
+  body{background:white;}
+  .sec{background:white;border:1px solid #ddd;box-shadow:none;break-inside:auto;page-break-inside:auto;}
+  .view-hdr{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .item-block{break-inside:auto;page-break-inside:auto;}
+  .page-wrap{padding:0;margin:0;max-width:100%;}
+  .container, .container-fluid{padding:0;margin:0;max-width:100%;}
+  @page{size:A4;margin:6mm;}
+}
+</style>
+
+<a href="/admin/customers/<%= customer._id %>/visits" class="back-link"><i class="fa-solid fa-arrow-right"></i> زيارات <%= customer.fullName %></a>
+
+<div class="view-hdr">
+  <div>
+    <div class="vnum"><i class="fa-solid fa-star me-1" style="font-size:14px;"></i> زيارة #<%= visit.visitNumber %></div>
+    <div class="vmeta">
+      <span><i class="fa-solid fa-user"></i> <%= customer.fullName %></span>
+      <span><i class="fa-solid fa-calendar"></i> <%= new Date(visit.visitDate).toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric'}) %></span>
+    </div>
+  </div>
+  <div class="view-actions">
+    <a href="/admin/customers/<%= customer._id %>/visits/<%= visit._id %>/print" target="_blank" class="vabtn vabtn-print"><i class="fa-solid fa-print"></i> طباعة</a>
+    <a href="/admin/customers/<%= customer._id %>/visits/<%= visit._id %>/edit" class="vabtn vabtn-edit"><i class="fa-solid fa-pen"></i> تعديل</a>
+  </div>
+</div>
+
+<!-- Sofas -->
+<% if(visit.sofas && visit.sofas.length){ %>
+<div class="sec">
+  <div class="sec-tit"><i class="fa-solid fa-couch"></i> الكنبات (<%= visit.sofas.length %>)</div>
+  <% visit.sofas.forEach((s,i) => { 
+    let totalSofaPrice = s.price || 0;
+  %>
+  <div class="item-block">
+    <div class="item-ttl"><i class="fa-solid fa-couch me-1"></i> كنب <%= i+1 %></div>
+    <div class="info-row">
+      <%if(s.sofaType){%><div class="info-item"><div class="info-lbl">النوع</div><div class="info-val"><%=s.sofaType%></div></div><%}%>
+      <%if(s.seats){%><div class="info-item"><div class="info-lbl">المقاعد</div><div class="info-val badge-val"><%=s.seats%></div></div><%}%>
+      <%if(s.foamType){%><div class="info-item"><div class="info-lbl">الإسفنج</div><div class="info-val"><%=s.foamType%></div></div><%}%>
+      <%if(s.fabricType){%><div class="info-item"><div class="info-lbl">القماش</div><div class="info-val"><%=s.fabricType%></div></div><%}%>
+      <%if(s.color){%><div class="info-item"><div class="info-lbl">اللون</div><div class="info-val"><%=s.color%></div></div><%}%>
+      <%if(s.legType){%><div class="info-item"><div class="info-lbl">الأرجل</div><div class="info-val"><%=s.legType%></div></div><%}%>
+      <%if(s.cushionCount){%><div class="info-item"><div class="info-lbl">المخدات</div><div class="info-val badge-val"><%=s.cushionCount%></div></div><%}%>
+      <% if(s.price && s.price > 0){ %>
+        <div class="info-item"><div class="info-lbl">السعر</div><div class="info-val price-tag"><%= s.price %> ₪</div></div>
+      <% } %>
+    </div>
+    <%if(s.styleImage){%><img src="<%=s.styleImage%>" class="style-img"><%}%>
+    <%if(s.notes){%><div style="margin-top:8px;font-size:13px;color:var(--text-muted);"><i class="fa-solid fa-note-sticky me-1"></i><%=s.notes%></div><%}%>
+  </div>
+  <% }) %>
+</div>
+<% } %>
+
+<!-- Qaadas -->
+<% if(visit.qaadas && visit.qaadas.length){ %>
+<div class="sec">
+  <div class="sec-tit"><i class="fa-solid fa-chair"></i> القعدات (<%= visit.qaadas.length %>)</div>
+  <% visit.qaadas.forEach((q,i) => { 
+    let qTotal = (q.distance || 0) * (q.pricePerMeter || 0);
+  %>
+  <div class="item-block">
+    <div class="item-ttl"><i class="fa-solid fa-chair me-1"></i> قعدة <%= i+1 %></div>
+    <div class="info-row">
+      <%if(q.qaadaType){%><div class="info-item"><div class="info-lbl">النوع</div><div class="info-val"><%=q.qaadaType%></div></div><%}%>
+      <%if(q.distance){%><div class="info-item"><div class="info-lbl">المسافة</div><div class="info-val badge-val"><%=q.distance%> م</div></div><%}%>
+      <%if(q.foamType){%><div class="info-item"><div class="info-lbl">الإسفنج</div><div class="info-val"><%=q.foamType%></div></div><%}%>
+      <%if(q.fabricType){%><div class="info-item"><div class="info-lbl">القماش</div><div class="info-val"><%=q.fabricType%></div></div><%}%>
+      <%if(q.color){%><div class="info-item"><div class="info-lbl">اللون</div><div class="info-val"><%=q.color%></div></div><%}%>
+      <%if(q.legType){%><div class="info-item"><div class="info-lbl">الأرجل</div><div class="info-val"><%=q.legType%></div></div><%}%>
+      <% if(q.pricePerMeter && q.pricePerMeter > 0){ %>
+        <div class="info-item"><div class="info-lbl">سعر المتر</div><div class="info-val price-tag"><%= q.pricePerMeter %> ₪</div></div>
+        <div class="info-item"><div class="info-lbl">الإجمالي</div><div class="info-val price-total"><%= qTotal.toFixed(2) %> ₪</div></div>
+      <% } %>
+    </div>
+    <%if(q.styleImage){%><img src="<%=q.styleImage%>" class="style-img"><%}%>
+    <%if(q.notes){%><div style="margin-top:8px;font-size:13px;color:var(--text-muted);"><i class="fa-solid fa-note-sticky me-1"></i><%=q.notes%></div><%}%>
+  </div>
+  <% }) %>
+  <% if(visit.qaadaCanvasData){ %>
+  <div style="margin-top:12px;"><div class="info-lbl mb-1" style="font-size:12px;font-weight:700;color:var(--text-muted);">رسم توزيع القعدة</div>
+  <img src="<%= visit.qaadaCanvasData %>" class="canvas-img"></div>
+  <% } %>
+</div>
+<% } %>
+
+<!-- Rooms / Carpet -->
+<% if(visit.rooms && visit.rooms.length){ 
+  let totalArea = 0;
+  let totalCarpetPrice = 0;
+  visit.rooms.forEach(r => { 
+    totalArea += (r.area || 0);
+    totalCarpetPrice += (r.area || 0) * (r.pricePerMeter || 0);
+  });
+%>
+<div class="sec">
+  <div class="sec-tit"><i class="fa-solid fa-border-all"></i> الموكيت (<%= visit.rooms.length %> غرفة)</div>
+  <% visit.rooms.forEach((r,i) => { 
+    let roomTotal = (r.area || 0) * (r.pricePerMeter || 0);
+  %>
+  <div class="item-block">
+    <div class="item-ttl"><i class="fa-solid fa-home me-1"></i> غرفة <%= i+1 %><%if(r.name){%>: <%=r.name%><%}%></div>
+    <div class="info-row">
+      <%if(r.length){%><div class="info-item"><div class="info-lbl">الطول</div><div class="info-val"><%=r.length%> م</div></div><%}%>
+      <%if(r.width){%><div class="info-item"><div class="info-lbl">العرض</div><div class="info-val"><%=r.width%> م</div></div><%}%>
+      <%if(r.area){%><div class="info-item"><div class="info-lbl">المساحة</div><div class="info-val badge-val"><%=r.area%> م²</div></div><%}%>
+      <%if(r.carpetType){%><div class="info-item"><div class="info-lbl">نوع الموكيت</div><div class="info-val"><%=r.carpetType%></div></div><%}%>
+      <%if(r.color){%><div class="info-item"><div class="info-lbl">اللون</div><div class="info-val"><%=r.color%></div></div><%}%>
+      <% if(r.pricePerMeter && r.pricePerMeter > 0){ %>
+        <div class="info-item"><div class="info-lbl">سعر المتر</div><div class="info-val price-tag"><%= r.pricePerMeter %> ₪</div></div>
+        <div class="info-item"><div class="info-lbl">الإجمالي</div><div class="info-val price-total"><%= roomTotal.toFixed(2) %> ₪</div></div>
+      <% } %>
+    </div>
+  </div>
+  <% }) %>
+  
+  <!-- Total Carpet -->
+  <div class="total-summary">
+    <div class="total-item">
+      <span style="font-size:18px;">🏠</span>
+      <span>إجمالي الموكيت:</span>
+      <span class="total-value"><%= totalArea.toFixed(2) %></span>
+      <span class="total-unit">م²</span>
+      <span class="total-count">(<%= visit.rooms.length %> غرفة)</span>
+      <% if(totalCarpetPrice > 0){ %>
+        <span class="total-price"><%= totalCarpetPrice.toFixed(2) %> ₪</span>
+      <% } %>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<!-- Windows / Curtains -->
+<% if(visit.windows && visit.windows.length){ 
+  let totalCurtains = 0;
+  let totalPieces = 0;
+  let totalCurtainPrice = 0;
+  visit.windows.forEach(w => {
+    const itemTotal = (w.width || 0) * (w.count || 1);
+    totalCurtains += itemTotal;
+    totalPieces += (w.count || 1);
+    totalCurtainPrice += itemTotal * (w.pricePerMeter || 0);
+  });
+%>
+<div class="sec">
+  <div class="sec-tit"><i class="fa-solid fa-window-maximize"></i> البرادي (<%= visit.windows.length %> شباك)</div>
+  <% visit.windows.forEach((w,i) => { 
+    const totalWidth = (w.width || 0) * (w.count || 1);
+    const winPrice = totalWidth * (w.pricePerMeter || 0);
+  %>
+  <div class="item-block">
+    <div class="item-ttl"><i class="fa-solid fa-window-maximize me-1"></i> شباك <%= i+1 %><%if(w.location){%>: <%=w.location%><%}%></div>
+    <div class="info-row">
+      <%if(w.width){%><div class="info-item"><div class="info-lbl">العرض</div><div class="info-val"><%=w.width%> م</div></div><%}%>
+      <%if(w.height){%><div class="info-item"><div class="info-lbl">الارتفاع</div><div class="info-val"><%=w.height%> م</div></div><%}%>
+      <% if(w.count && w.count > 1){ %>
+        <div class="info-item"><div class="info-lbl">العدد</div><div class="info-val badge-val"><%=w.count%></div></div>
+      <% } %>
+      <% if(totalWidth > 0){ %>
+        <div class="info-item"><div class="info-lbl">الإجمالي</div><div class="info-val badge-val"><%=totalWidth.toFixed(2)%> م</div></div>
+      <% } %>
+      <%if(w.curtainTypeName){%><div class="info-item"><div class="info-lbl">نوع البرادي</div><div class="info-val"><%=w.curtainTypeName%></div></div><%}%>
+      <%if(w.fabricType){%><div class="info-item"><div class="info-lbl">القماش</div><div class="info-val"><%=w.fabricType%></div></div><%}%>
+      <%if(w.color){%><div class="info-item"><div class="info-lbl">اللون</div><div class="info-val"><%=w.color%></div></div><%}%>
+      <% if(w.pricePerMeter && w.pricePerMeter > 0){ %>
+        <div class="info-item"><div class="info-lbl">سعر المتر</div><div class="info-val price-tag"><%= w.pricePerMeter %> ₪</div></div>
+        <div class="info-item"><div class="info-lbl">الإجمالي</div><div class="info-val price-total"><%= winPrice.toFixed(2) %> ₪</div></div>
+      <% } %>
+    </div>
+    <%if(w.curtainTypeImage){%><img src="<%=w.curtainTypeImage%>" style="height:65px;border-radius:7px;border:1px solid var(--border-color);margin-top:8px;"><%}%>
+    <%if(w.notes){%><div style="margin-top:8px;font-size:12px;color:var(--text-muted);"><i class="fa-solid fa-note-sticky me-1"></i><%=w.notes%></div><%}%>
+  </div>
+  <% }) %>
+  
+  <!-- Total Curtains -->
+  <div class="total-summary">
+    <div class="total-item" style="flex-wrap:wrap;">
+      <span style="font-size:18px;">🪟</span>
+      <span>إجمالي البرادي:</span>
+      <span class="total-value"><%= totalCurtains.toFixed(2) %></span>
+      <span class="total-unit">م</span>
+      <span class="total-count">(<%= totalPieces %> قطعة - <%= visit.windows.length %> نوع)</span>
+      <% if(totalCurtainPrice > 0){ %>
+        <span class="total-price"><%= totalCurtainPrice.toFixed(2) %> ₪</span>
+      <% } %>
+    </div>
+  </div>
+  
+  <% if(visit.windowsCanvasData){ %>
+  <div style="margin-top:12px;"><div class="info-lbl mb-1" style="font-size:12px;font-weight:700;color:var(--text-muted);">رسم توزيع الشبابيك</div>
+  <img src="<%= visit.windowsCanvasData %>" class="canvas-img"></div>
+  <% } %>
+</div>
+<% } %>
+
+<!-- Photos -->
+<% if(visit.photos && visit.photos.length){ %>
+<div class="sec">
+  <div class="sec-tit"><i class="fa-solid fa-images"></i> الصور (<%= visit.photos.length %>)</div>
+  <div class="photos-grid">
+    <% visit.photos.forEach(p => { %><img src="<%= p.url %>" class="photo-img"><% }) %>
+  </div>
+</div>
+<% } %>
+
+<!-- Notes -->
+<% if(visit.generalNotes){ %>
+<div class="sec">
+  <div class="sec-tit"><i class="fa-solid fa-note-sticky"></i> ملاحظات</div>
+  <div style="font-size:14px;line-height:2;white-space:pre-wrap;"><%= visit.generalNotes %></div>
+</div>
+<% } %>
+
+<%- include('../partials/admin-footer') %>
