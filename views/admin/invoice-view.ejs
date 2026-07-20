@@ -133,46 +133,48 @@
     background: #ef4444;
   }
 
-  /* ===== معلومات العميل ===== */
+  /* ===== معلومات العميل - تم التعديل هنا ===== */
   .party-strip {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px 20px;
+    gap: 6px 16px;
     padding: 4px 12px;
     background: #f8fafc;
     border-bottom: 1px solid #e2e8f0;
     margin-bottom: 4px;
-    font-size: 10px;
+    font-size: 9px; /* تصغير حجم الخط العام */
     align-items: center;
   }
 
   .pi {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
   }
 
   .pi i {
     color: #0f172a;
-    font-size: 11px;
+    font-size: 10px; /* تصغير الأيقونات */
     width: 14px;
   }
 
   .pi .label {
     color: #64748b;
     font-weight: 400;
+    font-size: 8px; /* تصغير التسميات */
   }
 
   .pi .value {
     font-weight: 700;
     color: #0f172a;
+    font-size: 9px; /* تصغير القيم */
   }
 
   .pi .badge-type {
     display: inline-block;
-    padding: 1px 8px;
+    padding: 1px 6px;
     border-radius: 10px;
-    font-size: 8px;
+    font-size: 7px; /* تصغير شارة الزبون/تاجر */
     font-weight: 700;
     color: #fff;
     background: #3b82f6;
@@ -615,7 +617,7 @@
 
 <div class="print-container">
 
-  <!-- ===== الترويسة الجديدة ===== -->
+  <!-- ===== الترويسة ===== -->
   <div class="inv-head">
     <!-- الجهة اليمنى: معلومات المعرض -->
     <div class="header-right">
@@ -657,11 +659,11 @@
     </div>
   </div>
 
-  <!-- ===== معلومات العميل ===== -->
+  <!-- ===== معلومات العميل - تم التعديل هنا ===== -->
   <div class="party-strip">
     <div class="pi">
       <i class="fa-solid fa-<%= invoice.type === 'customer' ? 'user' : 'user-tie' %>"></i>
-      <span class="label">الطرف:</span>
+      <span class="label">العميل:</span> <!-- تم التعديل من "الطرف:" إلى "العميل:" -->
       <span class="value"><%= invoice.partyName %></span>
       <span class="badge-type <%= invoice.type === 'customer' ? '' : 'dealer' %>">
         <%= invoice.type === 'customer' ? 'زبون' : 'تاجر' %>
@@ -683,7 +685,7 @@
     <% } %>
     <div class="pi" style="margin-right:auto;">
       <i class="fa-solid fa-circle"></i>
-      <span class="value" style="font-size:9px; color:<%= invoice.remainingBalance > 0 ? '#dc2626' : '#16a34a' %>;">
+      <span class="value" style="font-size:8px; color:<%= invoice.remainingBalance > 0 ? '#dc2626' : '#16a34a' %>;">
         المتبقي: <%= invoice.remainingBalance.toLocaleString('ar-EG') %> <%= settings.currency || '₪' %>
       </span>
     </div>
@@ -744,7 +746,7 @@
     </table>
   </div>
 
-  <!-- ===== ملخص الفاتورة (مضغوط) ===== -->
+  <!-- ===== ملخص الفاتورة ===== -->
   <div class="totals-section">
     <div class="totals-grid">
       <div class="tot-box">
