@@ -723,7 +723,7 @@
 
 </div>
 
-<!-- ===== مودال إضافة حركة ===== -->
+<!-- ===== مودال إضافة حركة (تم إصلاح أسماء الحقول لتطابق السيرفر) ===== -->
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -731,13 +731,18 @@
         <h5 class="modal-title"><i class="fa-solid fa-plus-circle text-gold"></i> إضافة حركة جديدة</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <form action="/admin/statement/add" method="POST">
+      
+      <!-- 1. إرجاع الـ ID للرابط كما كان في الكود القديم -->
+      <form action="/admin/statement/add/<%= party._id %>" method="POST">
+        
+        <!-- 2. الحقل المخفي type (لأن السيرفر يقرأه) -->
         <input type="hidden" name="type" value="<%= type %>">
-        <input type="hidden" name="partyId" value="<%= party._id %>">
+
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label">البيان</label>
-            <input type="text" name="description" class="form-control" required>
+            <!-- 3. إرجاع الاسم إلى desc -->
+            <input type="text" name="desc" class="form-control" required>
           </div>
           <div class="mb-3">
             <label class="form-label">المبلغ</label>
@@ -745,7 +750,8 @@
           </div>
           <div class="mb-3">
             <label class="form-label">النوع</label>
-            <select name="transactionType" class="form-select">
+            <!-- 4. إرجاع الاسم إلى type -->
+            <select name="type" class="form-select">
               <option value="debit">مدين (عليك)</option>
               <option value="credit">دائن (لك)</option>
             </select>
@@ -807,6 +813,14 @@
 <!-- ===== سكريبتات تشغيل المودالات والأزرار ===== -->
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // نقل المودالات لـ body مباشرة لتجنب مشاكل stacking context
+    ['addItemModal', 'editTxModal'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && el.parentNode !== document.body) {
+        document.body.appendChild(el);
+      }
+    });
+
     // تفعيل أزرار التعديل
     document.querySelectorAll('.edit-tx-btn').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
