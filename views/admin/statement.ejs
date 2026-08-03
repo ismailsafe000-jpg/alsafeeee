@@ -723,7 +723,7 @@
 
 </div>
 
-<!-- ===== مودال إضافة حركة (تم إصلاح الأخطاء البرمجية هنا) ===== -->
+<!-- ===== مودال إضافة حركة (تم إصلاح كافة الأخطاء البرمجية والمنطقية) ===== -->
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -731,13 +731,22 @@
         <h5 class="modal-title"><i class="fa-solid fa-plus-circle text-gold"></i> إضافة حركة جديدة</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <form action="/admin/statement/add/<%= party._id %>" method="POST">
+      
+      <!-- تم إصلاح الإرسال: إزالة الـ ID من الرابط -->
+      <form action="/admin/statement/add" method="POST">
+        
+        <!-- تم إضافة الحقل المخفي الخاص بـ partyId ليصل للسيرفر -->
+        <input type="hidden" name="partyId" value="<%= party._id %>">
+        
+        <!-- تم تغيير اسم هذا الحقل لتجنب التعارض (الحقل المخفي اسمه type، وهذا صار entryType) -->
         <input type="hidden" name="type" value="<%= type %>">
+
         <div class="modal-body">
           
           <div class="mb-3">
             <label class="form-label">البيان</label>
-            <input type="text" name="desc" class="form-control" required>
+            <!-- تم تغيير الاسم من desc إلى description ليتطابق مع الـ Route -->
+            <input type="text" name="description" class="form-control" required>
           </div>
           
           <div class="mb-3">
@@ -747,7 +756,8 @@
           
           <div class="mb-3">
             <label class="form-label">النوع</label>
-            <select name="type" class="form-select">
+            <!-- تم تغيير الاسم من type إلى entryType لتجنب التعارض -->
+            <select name="entryType" class="form-select">
               <option value="debit">مدين (عليك)</option>
               <option value="credit">دائن (لك)</option>
             </select>
