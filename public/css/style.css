@@ -127,8 +127,8 @@ button { cursor: pointer; }
 
 /* ── Page entrance animation ── */
 @keyframes pageIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .content-area {
   animation: pageIn 0.35s var(--ease-out) both;
