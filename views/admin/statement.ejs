@@ -723,7 +723,7 @@
 
 </div>
 
-<!-- ===== مودال إضافة حركة (تم إصلاح أسماء الحقول لتطابق السيرفر) ===== -->
+<!-- ===== مودال إضافة حركة ===== -->
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -731,18 +731,13 @@
         <h5 class="modal-title"><i class="fa-solid fa-plus-circle text-gold"></i> إضافة حركة جديدة</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      
-      <!-- 1. إرجاع الـ ID للرابط كما كان في الكود القديم -->
-      <form action="/admin/statement/add/<%= party._id %>" method="POST">
-        
-        <!-- 2. الحقل المخفي type (لأن السيرفر يقرأه) -->
+      <form action="/admin/statement/add" method="POST">
         <input type="hidden" name="type" value="<%= type %>">
-
+        <input type="hidden" name="partyId" value="<%= party._id %>">
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label">البيان</label>
-            <!-- 3. إرجاع الاسم إلى desc -->
-            <input type="text" name="desc" class="form-control" required>
+            <input type="text" name="description" class="form-control" required>
           </div>
           <div class="mb-3">
             <label class="form-label">المبلغ</label>
@@ -750,8 +745,7 @@
           </div>
           <div class="mb-3">
             <label class="form-label">النوع</label>
-            <!-- 4. إرجاع الاسم إلى type -->
-            <select name="type" class="form-select">
+            <select name="transactionType" class="form-select">
               <option value="debit">مدين (عليك)</option>
               <option value="credit">دائن (لك)</option>
             </select>
