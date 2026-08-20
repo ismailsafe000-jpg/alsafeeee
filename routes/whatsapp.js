@@ -197,20 +197,18 @@ router.post('/whatsapp-run-cron', isAdmin, async (req, res) => {
 
 /**
  * POST /admin/whatsapp-send-customer-statement/:id
- * يرسل كشف حساب الزبون (PDF) إلى رقمه على واتساب مباشرةً
- * يُستخدم من صفحة كشف حساب الزبون عبر زر "إرسال للزبون"
+ * يرسل كشف حساب الزبون إلى المدير على واتساب (وليس للزبون)
  */
 router.post('/whatsapp-send-customer-statement/:id', isAdmin, async (req, res) => {
   try {
-    const result = await MRS.sendCustomerStatementToCustomer(req.params.id, 'admin');
+    const result = await MRS.sendCustomerStatementToManager(req.params.id, 'admin');
     req.flash('success_msg',
-      `✅ تم إرسال كشف حساب ${result.fullName} إلى واتسابه` +
+      `✅ تم إرسال كشف حساب ${result.fullName} إلى المدير على واتساب` +
       (result.entries === 0 ? ' (لا توجد حركات)' : ` (${result.entries} حركة، الرصيد: ${result.balance.toLocaleString('ar-EG')} ₪)`)
     );
   } catch (err) {
     req.flash('error_msg', '❌ فشل الإرسال: ' + err.message);
   }
-  // العودة للصفحة السابقة (كشف حساب الزبون أو قائمة الزبائن)
   const back = req.get('Referer') || `/admin/statement/customer/${req.params.id}`;
   res.redirect(back);
 });
@@ -235,46 +233,14 @@ router.post('/whatsapp-send-statement-to-manager/:id', isAdmin, async (req, res)
 
 /**
  * POST /admin/whatsapp-send-invoice/:id
- * يُعيد إرسال إشعار الفاتورة يدوياً للزبون
+ * يُعيد إرسال إشعار الفاتورة يدوياً للمدير
  */
 router.post('/whatsapp-send-invoice/:id', isAdmin, async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id).lean();
     if (!invoice) { req.flash('error_msg', 'الفاتورة غير موجودة'); return res.redirect('back'); }
-    if (invoice.partyModel === 'Dealer') {
-      req.flash('error_msg', '🚫 واتساب مخصص للزبائن فقط — هذه الفاتورة لتاجر');
-      return res.redirect('back');
-    }
-
-    const customer = await Customer.findById(invoice.partyId).lean();
-    if (!customer || !customer.phone) {
-      req.flash('error_msg', `❌ الزبون ${invoice.partyName} ليس لديه رقم هاتف مسجّل`);
-      return res.redirect('back');
-    }
-
-    const discountPart = invoice.discount > 0
-      ? `المبلغ قبل الخصم: ${(invoice.subtotal || 0).toLocaleString('ar-EG')} ₪\n` +
-        `الخصم: ${(invoice.discount || 0).toLocaleString('ar-EG')} ₪\n`
-      : '';
-    const text =
-      `عزيزنا ${invoice.partyName}\n\n` +
-      `نود إعلامكم بتفاصيل الفاتورة الخاصة بكم في معرض الصافي للمفروشات.\n\n` +
-      `رقم الفاتورة: ${invoice.invoiceNumber}\n` +
-      discountPart +
-      `المبلغ الإجمالي: ${(invoice.totalAmount || 0).toLocaleString('ar-EG')} ₪\n` +
-      `المدفوع: ${(invoice.paidAmount || 0).toLocaleString('ar-EG')} ₪\n` +
-      `المتبقي: ${((invoice.totalAmount || 0) - (invoice.paidAmount || 0)).toLocaleString('ar-EG')} ₪\n` +
-      `تاريخ الفاتورة: ${_fmt(invoice.invoiceDate)}\n\n` +
-      `شكراً لتعاملكم معنا.`;
-
-    await WA.sendMessage(customer.phone, text);
-    await new NotificationLog({
-      partyName: invoice.partyName, partyPhone: customer.phone,
-      checkNumber: invoice.invoiceNumber, messageType: 'invoice_manual',
-      messageText: text, status: 'SUCCESS', sentBy: 'admin'
-    }).save();
-
-    req.flash('success_msg', `✅ تم إرسال إشعار الفاتورة ${invoice.invoiceNumber} إلى ${invoice.partyName}`);
+    await CNS.notifyInvoiceNew(invoice);
+    req.flash('success_msg', `✅ تم إرسال إشعار الفاتورة ${invoice.invoiceNumber} إلى المدير`);
   } catch (err) {
     req.flash('error_msg', '❌ فشل الإرسال: ' + err.message);
   }
@@ -283,46 +249,14 @@ router.post('/whatsapp-send-invoice/:id', isAdmin, async (req, res) => {
 
 /**
  * POST /admin/whatsapp-send-payment/:id
- * يُعيد إرسال إشعار الدفعة يدوياً للزبون
+ * يُعيد إرسال إشعار الدفعة يدوياً للمدير
  */
 router.post('/whatsapp-send-payment/:id', isAdmin, async (req, res) => {
   try {
-    const payment = await Payment.findById(req.params.id).lean();
+    const payment = await Payment.findById(req.params.id).populate('invoiceId', 'invoiceNumber').lean();
     if (!payment) { req.flash('error_msg', 'الدفعة غير موجودة'); return res.redirect('back'); }
-    if (payment.partyModel === 'Dealer') {
-      req.flash('error_msg', '🚫 واتساب مخصص للزبائن فقط');
-      return res.redirect('back');
-    }
-
-    const customer = await Customer.findById(payment.partyId).lean();
-    if (!customer || !customer.phone) {
-      req.flash('error_msg', `❌ الزبون ${payment.partyName} ليس لديه رقم هاتف مسجّل`);
-      return res.redirect('back');
-    }
-
-    const methodMap = { cash: 'نقداً', check: 'شيك', bank_transfer: 'تحويل بنكي', card: 'بطاقة', other: 'أخرى' };
-    const remainingBalance = typeof customer.balance === 'number' ? customer.balance : null;
-    const remainingLine = remainingBalance !== null
-      ? `المتبقي على حسابكم: ${remainingBalance.toLocaleString('ar-EG')} ₪\n`
-      : '';
-    const text =
-      `عزيزنا ${payment.partyName}\n\n` +
-      `نود إعلامكم بأنه تم استلام دفعتكم بنجاح في معرض الصافي للمفروشات.\n\n` +
-      `رقم السند: ${payment.voucherNumber || '-'}\n` +
-      `المبلغ: ${(payment.amount || 0).toLocaleString('ar-EG')} ₪\n` +
-      `طريقة الدفع: ${methodMap[payment.paymentMethod] || payment.paymentMethod}\n` +
-      `التاريخ: ${_fmt(payment.paymentDate)}\n` +
-      remainingLine + `\n` +
-      `شكراً لتعاملكم مع معرض الصافي للمفروشات.`;
-
-    await WA.sendMessage(customer.phone, text);
-    await new NotificationLog({
-      partyName: payment.partyName, partyPhone: customer.phone,
-      checkNumber: payment.voucherNumber || '-', messageType: 'payment_manual',
-      messageText: text, status: 'SUCCESS', sentBy: 'admin'
-    }).save();
-
-    req.flash('success_msg', `✅ تم إرسال إشعار الدفعة ${payment.voucherNumber || ''} إلى ${payment.partyName}`);
+    await CNS.notifyPaymentReceived(payment, null, null);
+    req.flash('success_msg', `✅ تم إرسال إشعار الدفعة ${payment.voucherNumber || ''} إلى المدير`);
   } catch (err) {
     req.flash('error_msg', '❌ فشل الإرسال: ' + err.message);
   }
@@ -331,41 +265,14 @@ router.post('/whatsapp-send-payment/:id', isAdmin, async (req, res) => {
 
 /**
  * POST /admin/whatsapp-send-check/:id
- * يُعيد إرسال إشعار شيك يدوياً للزبون
+ * يُعيد إرسال إشعار شيك يدوياً للمدير
  */
 router.post('/whatsapp-send-check/:id', isAdmin, async (req, res) => {
   try {
     const check = await Check.findById(req.params.id).lean();
     if (!check) { req.flash('error_msg', 'الشيك غير موجود'); return res.redirect('back'); }
-    if (check.partyModel === 'Dealer') {
-      req.flash('error_msg', '🚫 واتساب مخصص للزبائن فقط');
-      return res.redirect('back');
-    }
-
-    const customer = await Customer.findById(check.partyId).lean();
-    if (!customer || !customer.phone) {
-      req.flash('error_msg', `❌ الزبون ${check.partyName} ليس لديه رقم هاتف مسجّل`);
-      return res.redirect('back');
-    }
-
-    const statusMap = { pending: 'قيد الانتظار', cleared: 'تم صرفه', returned: 'مرتجع', cancelled: 'ملغى' };
-    const text =
-      `عزيزنا الزبون ${check.partyName}\n\n` +
-      `تذكير بالشيك المسجّل لدينا في معرض الصافي للمفروشات.\n\n` +
-      `رقم الشيك: ${check.checkNumber}\n` +
-      `القيمة: ${(check.amount || 0).toLocaleString('ar-EG')} ₪\n` +
-      `تاريخ الاستحقاق: ${_fmt(check.maturityDate)}\n` +
-      `الحالة: ${statusMap[check.status] || check.status}\n\n` +
-      `للاستفسار يرجى التواصل معنا.`;
-
-    await WA.sendMessage(customer.phone, text);
-    await new NotificationLog({
-      partyName: check.partyName, partyPhone: customer.phone,
-      checkNumber: check.checkNumber, checkId: check._id,
-      messageType: 'check_manual', messageText: text, status: 'SUCCESS', sentBy: 'admin'
-    }).save();
-
-    req.flash('success_msg', `✅ تم إرسال إشعار الشيك ${check.checkNumber} إلى ${check.partyName}`);
+    await CNS.notifyAdded(check);
+    req.flash('success_msg', `✅ تم إرسال إشعار الشيك ${check.checkNumber} إلى المدير`);
   } catch (err) {
     req.flash('error_msg', '❌ فشل الإرسال: ' + err.message);
   }
