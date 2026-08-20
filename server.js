@@ -2,6 +2,7 @@ const app = require('./app');
 const mongoose = require('mongoose');
 const { startAutoBackup } = require('./routes/backup');
 const WhatsAppService = require('./services/WhatsAppService');
+const WhatsAppBot = require('./services/WhatsAppBot');  // ← أضف هذا السطر
 const CheckNotificationService  = require('./services/CheckNotificationService');
 const ManagerReportService      = require('./services/ManagerReportService');
 require('dotenv').config();
@@ -16,12 +17,10 @@ if (!MONGODB_URI) {
 
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
-  // لا نوقف السيرفر على الأخطاء غير المتوقعة — نسجّل فقط
 });
 
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
-  // لا نوقف السيرفر — Baileys أحياناً يرمي rejections داخلية
 });
 
 mongoose.connect(MONGODB_URI, { maxPoolSize: 50 })
@@ -31,7 +30,8 @@ mongoose.connect(MONGODB_URI, { maxPoolSize: 50 })
       console.log(`Saffi ERP running on port ${PORT}`);
       startAutoBackup();
       WhatsAppService.start();
-      CheckNotificationService.setupCron().catch(err => console.error('[WA-Cron] خطأ في الإعداد:', err.message));
+      WhatsAppBot.startBot().catch(e => console.error('[WA-Bot] خطأ:', e.message));  // ← أضف هذا السطر
+      CheckNotificationService.setupCron().catch(err => console.error('[WA-Cron] خطأ:', err.message));
       ManagerReportService.setupWeeklyCron().catch(err => console.error('[ManagerReport] خطأ في الإعداد:', err.message));
     });
   })
