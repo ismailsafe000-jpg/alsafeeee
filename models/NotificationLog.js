@@ -8,11 +8,18 @@ const schema = new mongoose.Schema({
   messageType: {
     type: String,
     enum: [
-      'added', 'cleared', 'returned', 'cancelled', 'edited', 'reminder', 'test', 'bulk', 'daily_report',
-      'invoice_new', 'invoice_new_mgr',
-      'invoice_paid', 'invoice_paid_mgr',
-      'payment_received', 'payment_received_mgr',
-      'statement_entry', 'statement_entry_mgr'
+      // إشعارات الشيكات
+      'check_added', 'check_cleared', 'check_returned', 'check_cancelled', 'check_edited', 'check_transferred',
+      // إشعارات الفواتير
+      'invoice_new', 'invoice_paid',
+      // إشعارات المدفوعات
+      'payment_received', 'payment_batch',
+      // إشعارات كشف الحساب
+      'statement_entry',
+      // التذكيرات والتقارير
+      'daily_reminders', 'daily_report', 'reminder_7d', 'reminder_3d', 'reminder_1d', 'reminder_due',
+      // اختبار
+      'test'
     ],
     required: true
   },
