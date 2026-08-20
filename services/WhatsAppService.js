@@ -53,6 +53,7 @@ let _cleanupTimer    = null;
 let _initialized     = false;
 let _hasLock         = false;
 let _conflictRetries = 0;
+let _messageHandler  = null;   // مستمع الرسائل الواردة
 
 // ─── ① طابور الإرسال ─────────────────────────────────────────────────────────
 // يضمن عدم إرسال رسالتين في نفس الوقت — يمنع "Stream Errored"
@@ -278,6 +279,17 @@ async function _init(force = false) {
       }
     });
 
+    // ─── مستمع الرسائل الواردة (للبوت) ────────────────────────────────────
+    _sock.ev.on('messages.upsert', ({ messages, type }) => {
+      if (type !== 'notify') return;
+      for (const msg of messages) {
+        if (msg.key?.fromMe) continue;
+        if (_messageHandler) {
+          _messageHandler(msg).catch(e => console.error('[WA-Msg] خطأ:', e.message));
+        }
+      }
+    });
+
   } catch (err) {
     _status = 'error';
     console.error('[WhatsApp] ❌ خطأ في التهيئة:', err.message);
@@ -350,4 +362,9 @@ function getStatus()     { return _status; }
 function getQR()         { return _qrBase64; }
 function getInstanceId() { return INSTANCE_ID; }
 
-module.exports = { start, reconnect, sendMessage, sendDocument, getStatus, getQR, getInstanceId };
+/** تسجيل مستمع رسائل واردة — يُستدعى عند كل رسالة جديدة */
+function onMessage(handler) {
+  _messageHandler = handler;
+}
+
+module.exports = { start, reconnect, sendMessage, sendDocument, getStatus, getQR, getInstanceId, onMessage };
