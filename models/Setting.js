@@ -150,7 +150,7 @@ const schema = new mongoose.Schema({
   waInvoiceNewEnabled:     { type: Boolean, default: true  },
   waInvoicePaidEnabled:    { type: Boolean, default: true  },
   waPaymentReceivedEnabled:{ type: Boolean, default: true  },
-  waStatementEntryEnabled: { type: Boolean, default: false },
+  waStatementEntryEnabled: { type: Boolean, default: true  },
   // عام
   waManagerPhone:          { type: String,  default: ''    },
   waAccountantPhone:       { type: String,  default: ''    },
