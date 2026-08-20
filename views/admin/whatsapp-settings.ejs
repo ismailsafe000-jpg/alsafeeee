@@ -169,10 +169,14 @@
     <!-- تفعيل الإشعارات -->
     <div class="wa-section">
       <h5><i class="fa-solid fa-toggle-on" style="color:#25d366;"></i> التفعيل العام</h5>
+      <div style="background:#ecfdf5; border:1px solid #86efac; border-radius:10px; padding:12px 16px; margin-bottom:14px; font-size:12.5px; color:#166534; display:flex; align-items:center; gap:8px;">
+        <i class="fa-solid fa-circle-info"></i>
+        <span>جميع الإشعارات تُرسل حصراً إلى رقم المدير المُحدَّد أدناه — لا يُرسل أي إشعار تلقائي للزبائن أو التجار.</span>
+      </div>
       <div class="switch-row">
         <div class="switch-info">
           <div class="sw-title">تفعيل إشعارات واتساب</div>
-          <div class="sw-desc">المفتاح الرئيسي — يوقف/يشغّل جميع الإشعارات</div>
+          <div class="sw-desc">المفتاح الرئيسي — يوقف/يشغّل جميع إشعارات المدير</div>
         </div>
         <div class="form-check form-switch mb-0">
           <input class="form-check-input" type="checkbox" name="waNotificationsEnabled"
@@ -183,14 +187,14 @@
 
     <!-- إشعارات الشيكات -->
     <div class="wa-section">
-      <h5><i class="fa-solid fa-money-check-dollar" style="color:#f59e0b;"></i> إشعارات الشيكات</h5>
+      <h5><i class="fa-solid fa-money-check-dollar" style="color:#f59e0b;"></i> إشعارات الشيكات <span style="font-size:11px; font-weight:400; color:var(--text-muted);">← للمدير فقط</span></h5>
       <% const checkToggles = [
-        { name:'waAddedEnabled',    title:'شيك جديد',       desc:'إشعار عند إضافة شيك جديد للزبون' },
-        { name:'waClearedEnabled',  title:'صرف الشيك',      desc:'إشعار عند صرف الشيك' },
-        { name:'waReturnedEnabled', title:'رجوع الشيك',     desc:'إشعار عند رجوع/ارتداد الشيك' },
-        { name:'waCancelledEnabled',title:'إلغاء الشيك',    desc:'إشعار عند إلغاء الشيك' },
-        { name:'waEditEnabled',     title:'تعديل الشيك',    desc:'إشعار عند تعديل بيانات الشيك' },
-        { name:'waReminderEnabled', title:'تذكيرات الاستحقاق',desc:'تذكيرات آلية قبل موعد الاستحقاق' },
+        { name:'waAddedEnabled',    title:'شيك جديد',       desc:'إشعار للمدير عند إضافة شيك جديد' },
+        { name:'waClearedEnabled',  title:'صرف الشيك',      desc:'إشعار للمدير عند صرف الشيك' },
+        { name:'waReturnedEnabled', title:'رجوع الشيك',     desc:'إشعار للمدير عند رجوع/ارتداد الشيك' },
+        { name:'waCancelledEnabled',title:'إلغاء الشيك',    desc:'إشعار للمدير عند إلغاء الشيك' },
+        { name:'waEditEnabled',     title:'تعديل الشيك',    desc:'إشعار للمدير عند تعديل بيانات الشيك' },
+        { name:'waReminderEnabled', title:'تذكيرات الاستحقاق',desc:'تذكيرات آلية للمدير قبل موعد الاستحقاق' },
       ]; %>
       <% checkToggles.forEach(t => { %>
         <div class="switch-row">
@@ -215,12 +219,12 @@
 
     <!-- إشعارات الفواتير والمدفوعات -->
     <div class="wa-section">
-      <h5><i class="fa-solid fa-file-invoice" style="color:#6366f1;"></i> إشعارات الفواتير والمدفوعات</h5>
+      <h5><i class="fa-solid fa-file-invoice" style="color:#6366f1;"></i> إشعارات الفواتير والمدفوعات <span style="font-size:11px; font-weight:400; color:var(--text-muted);">← للمدير فقط</span></h5>
       <% const invToggles = [
-        { name:'waInvoiceNewEnabled',       title:'فاتورة جديدة',          desc:'إشعار للزبون عند إصدار فاتورة جديدة' },
-        { name:'waInvoicePaidEnabled',      title:'فاتورة مدفوعة كاملاً',  desc:'إشعار للزبون عند سداد الفاتورة بالكامل' },
-        { name:'waPaymentReceivedEnabled',  title:'استلام دفعة',           desc:'إشعار للزبون عند استلام كل دفعة' },
-        { name:'waStatementEntryEnabled',   title:'حركة كشف الحساب',       desc:'إشعار عند كل قيد في كشف حساب الزبون' },
+        { name:'waInvoiceNewEnabled',       title:'فاتورة جديدة',          desc:'إشعار للمدير عند إصدار فاتورة جديدة (مع التفاصيل)' },
+        { name:'waInvoicePaidEnabled',      title:'فاتورة مدفوعة كاملاً',  desc:'إشعار للمدير عند سداد الفاتورة بالكامل' },
+        { name:'waPaymentReceivedEnabled',  title:'استلام دفعة / سند قبض أو صرف', desc:'إشعار للمدير عند كل دفعة (مع المبلغ والطريقة والرصيد)' },
+        { name:'waStatementEntryEnabled',   title:'حركة كشف الحساب',       desc:'إشعار للمدير عند كل قيد في كشف الحساب (مع الرصيد السابق والجديد)' },
       ]; %>
       <% invToggles.forEach(t => { %>
         <div class="switch-row">
@@ -238,14 +242,18 @@
 
     <!-- إعدادات المدير -->
     <div class="wa-section">
-      <h5><i class="fa-solid fa-user-tie" style="color:#8b5cf6;"></i> إعدادات المدير</h5>
+      <h5><i class="fa-solid fa-user-tie" style="color:#8b5cf6;"></i> إعدادات المدير — المستلم الوحيد للإشعارات</h5>
+      <div style="background:#eff6ff; border:1px solid #93c5fd; border-radius:10px; padding:12px 16px; margin-bottom:14px; font-size:12.5px; color:#1e40af; display:flex; align-items:center; gap:8px;">
+        <i class="fa-solid fa-shield-halved"></i>
+        <span>جميع إشعارات النظام (الفواتير، المدفوعات، الشيكات، كشف الحساب، التذكيرات، التقارير) تذهب إلى هذا الرقم <strong>حصراً</strong>. لا يُرسل أي إشعار للزبائن أو التجار.</span>
+      </div>
       <div class="row g-3">
         <div class="col-md-6">
           <label class="form-label">رقم واتساب المدير</label>
           <input type="text" class="form-control" name="waManagerPhone"
                  value="<%= settings.waManagerPhone || '' %>"
                  placeholder="مثال: 0501234567">
-          <div class="form-text" style="font-size:11px;color:var(--text-muted);">يتلقى التقارير اليومية وإشعارات الفواتير والمدفوعات</div>
+          <div class="form-text" style="font-size:11px;color:var(--text-muted);">المستلم الوحيد لجميع إشعارات النظام</div>
         </div>
         <div class="col-md-6">
           <label class="form-label">وقت التقرير اليومي</label>
@@ -293,9 +301,9 @@
     <h5><i class="fa-solid fa-paper-plane" style="color:#0ea5e9;"></i> إجراءات جماعية</h5>
     <div class="d-flex gap-2 flex-wrap">
       <form method="POST" action="/admin/whatsapp-bulk"
-            onsubmit="return confirm('سيتم إرسال رسالة تأكيد لجميع الزبائن الذين لديهم شيكات معلقة. متأكد؟');">
+            onsubmit="return confirm('سيتم إرسال ملخص الشيكات المعلقة للمدير فقط. متأكد؟');">
         <button class="btn btn-outline-primary btn-sm">
-          <i class="fa-solid fa-bullhorn"></i> إرسال جماعي (تأكيد الشيكات المعلقة)
+          <i class="fa-solid fa-bullhorn"></i> إرسال ملخص الشيكات المعلقة للمدير
         </button>
       </form>
       <form method="POST" action="/admin/whatsapp-manager-report"
@@ -306,7 +314,7 @@
       </form>
     </div>
     <div class="form-text mt-2" style="font-size:12px;color:var(--text-muted);">
-      الإرسال الجماعي يرسل رسالة تأكيد لكل زبون لديه شيك معلق — يستخدم فقط عند الحاجة.
+      جميع الإجراءات أعلاه تُرسل إلى المدير فقط.
     </div>
   </div>
 
