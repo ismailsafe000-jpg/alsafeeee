@@ -1,6 +1,11 @@
 'use strict';
 /**
- * CheckNotificationService — إشعارات الشيكات عبر WhatsApp
+ * CheckNotificationService — نظام إشعارات WhatsApp للمدير فقط
+ *
+ * جميع الإشعارات تذهب حصراً إلى رقم المدير (waManagerPhone).
+ * لا يُرسل أي إشعار تلقائي للزبائن أو التجار.
+ * كل عملية تُسجَّل في NotificationLog مع حالة النجاح/الفشل.
+ * فشل WhatsApp لا يُعطّل العمليات الأساسية.
  */
 
 const cron = require('node-cron');
@@ -15,366 +20,533 @@ const Setting = require('../models/Setting');
 
 let _cronJob = null;
 
-// ─── جلب الإعدادات ───────────────────────────────────────────────────────────
+// ─── مساعدات ──────────────────────────────────────────────────────────────────
+
 async function _getSettings() {
   let s = await Setting.findOne().lean();
   if (!s) s = {};
   return s;
 }
 
-// ─── تنسيق التاريخ ───────────────────────────────────────────────────────────
 function _fmt(date) {
   if (!date) return '-';
   return moment(date).locale('ar').format('DD/MM/YYYY');
 }
 
-// ─── قاعدة صارمة: الواتساب للزبائن فقط، ممنوع إرسال أي رسالة للتجار نهائيًا ────
-// نقطة تحقق واحدة مركزية يمر منها كل إشعار (فاتورة/دفعة/سند/شيك/كشف حساب/تذكير)
-// حتى لو أُضيفت وظيفة إشعار جديدة مستقبلاً، طالما تستخدم _getPartyPhone فهي محمية تلقائياً.
-function _isDealerEntity(entity) {
-  return entity && entity.partyModel === 'Dealer';
+function _fmtDateTime(date) {
+  if (!date) return '-';
+  return moment(date).locale('ar').format('DD/MM/YYYY HH:mm');
 }
 
-// ─── جلب رقم الهاتف للطرف ────────────────────────────────────────────────────
-async function _getPartyPhone(entity) {
-  try {
-    if (_isDealerEntity(entity)) {
-      console.log(`[WA] 🚫 تم تجاهل الإرسال — الطرف تاجر (${entity.partyName || ''}) والواتساب مخصص للزبائن فقط`);
-      return null;
-    }
-    const Model = entity.partyModel === 'Customer' ? Customer : Dealer;
-    const party = await Model.findById(entity.partyId).lean();
-    return party ? party.phone : null;
-  } catch (e) {
-    return null;
+function _methodAr(method) {
+  const map = { cash: 'نقداً', check: 'شيك', bank_transfer: 'تحويل بنكي', card: 'بطاقة', other: 'أخرى' };
+  return map[method] || method || 'غير محدد';
+}
+
+function _partyTypeAr(partyModel) {
+  return partyModel === 'Dealer' ? 'تاجر' : 'زبون';
+}
+
+function _statusAr(status) {
+  const map = { pending: 'جديد', cleared: 'تم الصرف', returned: 'مرتجع', transferred_to_dealer: 'محوّل لتاجر' };
+  return map[status] || status || '';
+}
+
+// ─── جلب رقم المدير ──────────────────────────────────────────────────────────
+
+async function _getManagerPhone() {
+  const s = await _getSettings();
+  return s.waManagerPhone || null;
+}
+
+// ─── التحقق من تفعيل نوع إشعار معين ─────────────────────────────────────────
+
+function _isEnabled(settings, key) {
+  if (!settings.waNotificationsEnabled) return false;
+  if (settings[key] === false) return false;
+  return true;
+}
+
+// ─── إرسال رسالة للمدير وتسجيلها ─────────────────────────────────────────────
+
+async function _sendToManager(text, logData) {
+  const phone = await _getManagerPhone();
+  if (!phone) {
+    console.log('[WA] ⚠️ لا يوجد رقم مدير — تم تخطي الإشعار');
+    return false;
   }
-}
-
-// ─── إرسال رسالة وتسجيلها ────────────────────────────────────────────────────
-async function _send(phone, text, logData) {
-  let status = 'SUCCESS', failReason = '', retries = 0;
+  let status = 'SUCCESS', failReason = '';
   try {
     await WA.sendMessage(phone, text);
   } catch (err) {
     status = 'FAILED';
     failReason = err.message;
-    retries = 3;
   }
   try {
-    await new NotificationLog({ ...logData, partyPhone: phone, messageText: text, status, failReason, retries }).save();
+    await new NotificationLog({
+      partyName: logData.partyName || 'المدير',
+      partyPhone: phone,
+      checkNumber: logData.checkNumber || '-',
+      checkId: logData.checkId || null,
+      messageType: logData.messageType,
+      messageText: text,
+      status,
+      failReason,
+      retries: status === 'FAILED' ? 3 : 0,
+      sentBy: logData.sentBy || 'system'
+    }).save();
   } catch (e) {
     console.error('[WA-Log] خطأ في حفظ السجل:', e.message);
+  }
+  if (status === 'FAILED') {
+    console.error(`[WA] ❌ فشل إرسال إشعار ${logData.messageType}: ${failReason}`);
   }
   return status === 'SUCCESS';
 }
 
 // ─── التحقق من عدم التكرار ───────────────────────────────────────────────────
-async function _isDuplicate(checkId, messageType) {
-  const last = await NotificationLog.findOne({ checkId, messageType, status: 'SUCCESS' }).sort({ sentAt: -1 }).lean();
+
+async function _isDuplicate(refId, messageType) {
+  const last = await NotificationLog.findOne({ checkId: refId, messageType, status: 'SUCCESS' }).sort({ sentAt: -1 }).lean();
   return !!last;
 }
 
-// ─── إشعار إضافة شيك جديد ────────────────────────────────────────────────────
-async function notifyAdded(check) {
-  try {
-    const s = await _getSettings();
-    if (!s.waNotificationsEnabled) return;
-    if (!s.waAddedEnabled)         return;
-    const phone = await _getPartyPhone(check);
-    if (!phone) { console.log(`[WA] ⚠️ لا يوجد رقم هاتف — شيك جديد ${check.checkNumber} / ${check.partyName}`); return; }
-    const text =
-`عزيزنا ${check.partyName}
 
-نود إعلامكم بأنه تم تسجيل شيك باسمكم لدى معرض الصافي للمفروشات.
+// ══════════════════════════════════════════════════════════════════════════════
+// إشعارات الفواتير — للمدير فقط
+// ══════════════════════════════════════════════════════════════════════════════
 
-رقم الشيك: ${check.checkNumber}
-
-القيمة: ${check.amount?.toLocaleString('ar-EG')} شيكل
-
-تاريخ الاستحقاق: ${_fmt(check.maturityDate)}
-
-شكراً لتعاملكم معنا.`;
-    await _send(phone, text, { partyName: check.partyName, checkNumber: check.checkNumber, checkId: check._id, messageType: 'added', sentBy: 'system' });
-  } catch (e) {
-    console.error('[WA] خطأ في إشعار الإضافة:', e.message);
-  }
-}
-
-// ─── إشعار صرف الشيك ─────────────────────────────────────────────────────────
-async function notifyCleared(check) {
-  try {
-    const s = await _getSettings();
-    if (!s.waNotificationsEnabled) { console.log(`[WA] ⚠️ الإشعارات معطلة — شيك ${check.checkNumber}`); return; }
-    if (!s.waClearedEnabled)        { console.log(`[WA] ⚠️ إشعار الصرف معطل — شيك ${check.checkNumber}`); return; }
-    if (await _isDuplicate(check._id, 'cleared')) { console.log(`[WA] ⚠️ تم الإرسال مسبقاً — شيك ${check.checkNumber}`); return; }
-    const phone = await _getPartyPhone(check);
-    if (!phone) { console.log(`[WA] ⚠️ لا يوجد رقم هاتف للطرف — شيك ${check.checkNumber} / ${check.partyName}`); return; }
-    const text =
-`عزيزنا الزبون ${check.partyName}
-
-نود إعلامكم بأنه تم صرف الشيك الخاص بكم والمسجل لدينا في معرض الصافي للمفروشات.
-
-رقم الشيك: ${check.checkNumber}
-
-القيمة: ${check.amount?.toLocaleString('ar-EG')} شيكل
-
-تاريخ الصرف: ${_fmt(check.clearDate || new Date())}
-
-شكراً لتعاملكم معنا.`;
-    await _send(phone, text, { partyName: check.partyName, checkNumber: check.checkNumber, checkId: check._id, messageType: 'cleared', sentBy: 'system' });
-  } catch (e) {
-    console.error('[WA] خطأ في إشعار الصرف:', e.message);
-  }
-}
-
-// ─── إشعار رجوع الشيك ────────────────────────────────────────────────────────
-async function notifyReturned(check) {
-  try {
-    const s = await _getSettings();
-    if (!s.waNotificationsEnabled) { console.log(`[WA] ⚠️ الإشعارات معطلة — شيك ${check.checkNumber}`); return; }
-    if (!s.waReturnedEnabled)       { console.log(`[WA] ⚠️ إشعار الرجوع معطل — شيك ${check.checkNumber}`); return; }
-    if (await _isDuplicate(check._id, 'returned')) { console.log(`[WA] ⚠️ تم الإرسال مسبقاً — شيك ${check.checkNumber}`); return; }
-    const phone = await _getPartyPhone(check);
-    if (!phone) { console.log(`[WA] ⚠️ لا يوجد رقم هاتف للطرف — شيك ${check.checkNumber} / ${check.partyName}`); return; }
-    const text =
-`عزيزنا الزبون ${check.partyName}
-
-نود إعلامكم بأن الشيك الخاص بكم قد تم إرجاعه.
-
-رقم الشيك: ${check.checkNumber}
-
-القيمة: ${check.amount?.toLocaleString('ar-EG')} شيكل
-
-تاريخ الشيك: ${_fmt(check.maturityDate)}
-
-يرجى التواصل معنا لمعالجة الأمر.`;
-    await _send(phone, text, { partyName: check.partyName, checkNumber: check.checkNumber, checkId: check._id, messageType: 'returned', sentBy: 'system' });
-  } catch (e) {
-    console.error('[WA] خطأ في إشعار الرجوع:', e.message);
-  }
-}
-
-// ─── إشعار إلغاء الشيك ───────────────────────────────────────────────────────
-async function notifyCancelled(check) {
-  try {
-    const s = await _getSettings();
-    if (!s.waNotificationsEnabled || !s.waCancelledEnabled) return;
-    const phone = await _getPartyPhone(check);
-    if (!phone) return;
-    const text =
-`عزيزنا الزبون ${check.partyName}
-
-نود إعلامكم بأنه تم إلغاء الشيك الخاص بكم المسجل لدينا.
-
-رقم الشيك: ${check.checkNumber}
-
-القيمة: ${check.amount?.toLocaleString('ar-EG')} شيكل
-
-للاستفسار يرجى التواصل معنا.
-
-شكراً لتعاملكم مع معرض الصافي للمفروشات.`;
-    await _send(phone, text, { partyName: check.partyName, checkNumber: check.checkNumber, checkId: check._id, messageType: 'cancelled', sentBy: 'system' });
-  } catch (e) {
-    console.error('[WA] خطأ في إشعار الإلغاء:', e.message);
-  }
-}
-
-// ─── إشعار فاتورة جديدة ──────────────────────────────────────────────────────
 async function notifyInvoiceNew(invoice) {
   try {
     const s = await _getSettings();
-    if (!s.waNotificationsEnabled) { console.log('[WA] ⚠️ فاتورة جديدة — الإشعارات معطلة (waNotificationsEnabled=false)'); return; }
-    if (s.waInvoiceNewEnabled === false) { console.log('[WA] ⚠️ فاتورة جديدة — إشعار الفاتورة معطل'); return; }
-    const phone = await _getPartyPhone(invoice);
-    if (!phone) {
-      console.log(`[WA] ⚠️ فاتورة جديدة — لا يوجد رقم هاتف للزبون: ${invoice.partyName}`);
-      // ✅ إصلاح: كانت مفقودة return — يكمل الكود ويطبع null في اللوجات بدون إرسال للمدير
-    } else {
-      console.log(`[WA] 📋 إرسال إشعار فاتورة جديدة → ${invoice.partyName} (${phone})`);
-    }
-    const text =
-`عزيزنا ${invoice.partyName}
-
-نود إعلامكم بأنه تم إصدار فاتورة جديدة باسمكم في معرض الصافي للمفروشات.
-
-رقم الفاتورة: ${invoice.invoiceNumber}
-${invoice.discount > 0 ? `المبلغ قبل الخصم: ${invoice.subtotal?.toLocaleString('ar-EG')} شيكل\nالخصم: ${invoice.discount?.toLocaleString('ar-EG')} شيكل\n` : ''}المبلغ الإجمالي: ${invoice.totalAmount?.toLocaleString('ar-EG')} شيكل
-
-تاريخ الفاتورة: ${_fmt(invoice.invoiceDate)}
-
-شكراً لتعاملكم معنا.`;
-    if (phone) await _send(phone, text, { partyName: invoice.partyName, checkNumber: invoice.invoiceNumber, messageType: 'invoice_new', sentBy: 'system' });
-    if (s.waManagerPhone) {
-      const mg = `📋 فاتورة جديدة\n👤 ${invoice.partyName}\n🔢 ${invoice.invoiceNumber}\n💰 ${invoice.totalAmount?.toLocaleString('ar-EG')} ₪`;
-      await _send(s.waManagerPhone, mg, { partyName: invoice.partyName, checkNumber: invoice.invoiceNumber, messageType: 'invoice_new_mgr', sentBy: 'system' });
-    }
-  } catch (e) { console.error('[WA] خطأ في إشعار الفاتورة الجديدة:', e.message); }
-}
-
-// ─── إشعار دفع الفاتورة كاملاً ───────────────────────────────────────────────
-async function notifyInvoicePaid(invoice) {
-  try {
-    const s = await _getSettings();
-    if (!s.waNotificationsEnabled) { console.log('[WA] ⚠️ فاتورة مدفوعة — الإشعارات معطلة'); return; }
-    if (s.waInvoicePaidEnabled === false) { console.log('[WA] ⚠️ فاتورة مدفوعة — إشعار الدفع الكامل معطل'); return; }
-    const phone = await _getPartyPhone(invoice);
-    console.log(`[WA] ✅ إرسال إشعار دفع كامل → ${invoice.partyName} (${phone})`);
-    const text =
-`عزيزنا ${invoice.partyName}
-
-نود إعلامكم بأنه تم استلام كامل مبلغ الفاتورة.
-
-رقم الفاتورة: ${invoice.invoiceNumber}
-${invoice.discount > 0 ? `المبلغ قبل الخصم: ${invoice.subtotal?.toLocaleString('ar-EG')} شيكل\nالخصم: ${invoice.discount?.toLocaleString('ar-EG')} شيكل\n` : ''}المبلغ الإجمالي: ${invoice.totalAmount?.toLocaleString('ar-EG')} شيكل
-
-شكراً لتعاملكم مع معرض الصافي للمفروشات.`;
-    if (phone) await _send(phone, text, { partyName: invoice.partyName, checkNumber: invoice.invoiceNumber, messageType: 'invoice_paid', sentBy: 'system' });
-    if (s.waManagerPhone) {
-      const mg = `✅ فاتورة مدفوعة بالكامل\n👤 ${invoice.partyName}\n🔢 ${invoice.invoiceNumber}\n💰 ${invoice.totalAmount?.toLocaleString('ar-EG')} ₪`;
-      await _send(s.waManagerPhone, mg, { partyName: invoice.partyName, checkNumber: invoice.invoiceNumber, messageType: 'invoice_paid_mgr', sentBy: 'system' });
-    }
-  } catch (e) { console.error('[WA] خطأ في إشعار الفاتورة المدفوعة:', e.message); }
-}
-
-// ─── إشعار استلام دفعة واحدة ─────────────────────────────────────────────────
-async function notifyPaymentReceived(payment, remainingBalance) {
-  try {
-    const s = await _getSettings();
-    if (!s.waNotificationsEnabled) { console.log('[WA] ⚠️ دفعة — الإشعارات معطلة'); return; }
-    if (s.waPaymentReceivedEnabled === false) { console.log('[WA] ⚠️ دفعة — إشعار الدفعة معطل'); return; }
-    const phone = await _getPartyPhone(payment);
-    console.log(`[WA] 💳 إرسال إشعار دفعة → ${payment.partyName} (${phone})`);
-    const methodMap = { cash: 'نقداً', check: 'شيك', bank_transfer: 'تحويل بنكي', card: 'بطاقة', other: 'أخرى' };
-    const methodAr = methodMap[payment.paymentMethod] || payment.paymentMethod;
-    const remainingLine = (remainingBalance !== undefined && remainingBalance !== null)
-      ? `\nالمتبقي على حسابكم: ${remainingBalance.toLocaleString('ar-EG')} شيكل\n`
-      : '\n';
-    const text =
-`عزيزنا ${payment.partyName}
-
-نود إعلامكم بأنه تم استلام دفعتكم بنجاح.
-
-المبلغ: ${payment.amount?.toLocaleString('ar-EG')} شيكل
-
-طريقة الدفع: ${methodAr}
-
-رقم السند: ${payment.voucherNumber || '-'}
-
-التاريخ: ${_fmt(payment.paymentDate)}
-${remainingLine}شكراً لتعاملكم مع معرض الصافي للمفروشات.`;
-    if (phone) await _send(phone, text, { partyName: payment.partyName, checkNumber: payment.voucherNumber || '-', messageType: 'payment_received', sentBy: 'system' });
-    if (s.waManagerPhone) {
-      const mg = `💳 دفعة مستلمة\n👤 ${payment.partyName}\n💰 ${payment.amount?.toLocaleString('ar-EG')} ₪\n${methodAr}${remainingBalance !== undefined ? `\nالمتبقي: ${remainingBalance.toLocaleString('ar-EG')} ₪` : ''}`;
-      await _send(s.waManagerPhone, mg, { partyName: payment.partyName, checkNumber: payment.voucherNumber || '-', messageType: 'payment_received_mgr', sentBy: 'system' });
-    }
-  } catch (e) { console.error('[WA] خطأ في إشعار الدفعة:', e.message); }
-}
-
-// ─── إشعار استلام دفعات متعددة (رسالة واحدة) ────────────────────────────────
-async function notifyPaymentsBatch(payments, remainingBalance) {
-  try {
-    if (!payments || payments.length === 0) return;
-    const s = await _getSettings();
-    if (!s.waNotificationsEnabled) { console.log('[WA] ⚠️ دفعات — الإشعارات معطلة'); return; }
-    if (s.waPaymentReceivedEnabled === false) { console.log('[WA] ⚠️ دفعات — إشعار الدفعة معطل'); return; }
-    // استخدم أول دفعة لجلب رقم الهاتف
-    const phone = await _getPartyPhone(payments[0]);
-    if (!phone) { console.log(`[WA] ⚠️ لا يوجد رقم هاتف — ${payments[0].partyName}`); return; }
-
-    const methodMap = { cash: 'نقداً', check: 'شيك', bank_transfer: 'تحويل بنكي', card: 'بطاقة', other: 'أخرى' };
-    const totalAmount = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-
-    const paymentLines = payments.map((p, i) =>
-      `${i + 1}. ${(p.amount || 0).toLocaleString('ar-EG')} شيكل — ${methodMap[p.paymentMethod] || p.paymentMethod} (${p.voucherNumber || '-'})`
-    ).join('\n');
-
-    const remainingLine = (remainingBalance !== undefined && remainingBalance !== null)
-      ? `\nالمتبقي على حسابكم: ${remainingBalance.toLocaleString('ar-EG')} شيكل\n`
-      : '\n';
+    if (!_isEnabled(s, 'waInvoiceNewEnabled')) return;
 
     const text =
-`عزيزنا ${payments[0].partyName}
+`📋 *فاتورة جديدة — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
 
-نود إعلامكم بأنه تم استلام دفعاتكم بنجاح في معرض الصافي للمفروشات.
+🏷️ نوع الطرف: ${_partyTypeAr(invoice.partyModel)}
+👤 الطرف: ${invoice.partyName || '-'}
+🔢 رقم الفاتورة: ${invoice.invoiceNumber || '-'}
+💰 المبلغ الإجمالي: ${(invoice.totalAmount || 0).toLocaleString('ar-EG')} ₪
+${invoice.discount > 0 ? `💸 الخصم: ${(invoice.discount || 0).toLocaleString('ar-EG')} ₪
+` : ''}📅 التاريخ: ${_fmt(invoice.invoiceDate)}
+📝 ملاحظات: ${invoice.notes || 'لا توجد'}
 
-─────────────────
-${paymentLines}
-─────────────────
-الإجمالي: ${totalAmount.toLocaleString('ar-EG')} شيكل
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
 
-التاريخ: ${_fmt(payments[0].paymentDate)}
-${remainingLine}شكراً لتعاملكم معنا.`;
-
-    console.log(`[WA] 💳 إرسال إشعار دفعات (${payments.length}) → ${payments[0].partyName} (${phone})`);
-    const firstVoucher = payments[0].voucherNumber || '-';
-    await _send(phone, text, { partyName: payments[0].partyName, checkNumber: firstVoucher, messageType: 'payment_received', sentBy: 'system' });
-
-    if (s.waManagerPhone) {
-      const mg = `💳 دفعات مستلمة (${payments.length})\n👤 ${payments[0].partyName}\n💰 الإجمالي: ${totalAmount.toLocaleString('ar-EG')} ₪${remainingBalance !== undefined ? `\nالمتبقي: ${remainingBalance.toLocaleString('ar-EG')} ₪` : ''}`;
-      await _send(s.waManagerPhone, mg, { partyName: payments[0].partyName, checkNumber: firstVoucher, messageType: 'payment_received_mgr', sentBy: 'system' });
-    }
-  } catch (e) { console.error('[WA] خطأ في إشعار الدفعات المتعددة:', e.message); }
-}
-
-// ─── إشعار حركة كشف الحساب ───────────────────────────────────────────────────
-async function notifyStatementEntry(entry, remainingBalance) {
-  try {
-    const s = await _getSettings();
-    if (!s.waNotificationsEnabled) { console.log('[WA] ⚠️ كشف حساب — الإشعارات معطلة'); return; }
-    if (s.waStatementEntryEnabled === false) { console.log('[WA] ⚠️ كشف حساب — إشعار الكشف معطل'); return; }
-    const phone = await _getPartyPhone(entry);
-    console.log(`[WA] 📒 إرسال إشعار كشف حساب → ${entry.partyName} (${phone})`);
-    const typeAr = entry.type === 'debit' ? 'مديونية' : 'دفعة';
-    const remainingLine = (remainingBalance !== undefined && remainingBalance !== null)
-      ? `\nالمتبقي على حسابكم: ${remainingBalance.toLocaleString('ar-EG')} شيكل\n`
-      : '\n';
-    const text =
-`عزيزنا ${entry.partyName}
-
-تم تسجيل حركة جديدة على حسابكم في معرض الصافي للمفروشات.
-
-البيان: ${entry.description}
-
-المبلغ: ${entry.amount?.toLocaleString('ar-EG')} شيكل
-
-النوع: ${typeAr}
-
-التاريخ: ${_fmt(entry.date)}
-${remainingLine}للاستفسار تواصل معنا.`;
-    if (phone) await _send(phone, text, { partyName: entry.partyName, checkNumber: entry.refNo || '-', messageType: 'statement_entry', sentBy: 'system' });
-    if (s.waManagerPhone) {
-      const mg = `📒 حركة كشف حساب\n👤 ${entry.partyName}\n${typeAr}: ${entry.amount?.toLocaleString('ar-EG')} ₪\n${entry.description}${remainingBalance !== undefined ? `\nالمتبقي: ${remainingBalance.toLocaleString('ar-EG')} ₪` : ''}`;
-      await _send(s.waManagerPhone, mg, { partyName: entry.partyName, checkNumber: entry.refNo || '-', messageType: 'statement_entry_mgr', sentBy: 'system' });
-    }
-  } catch (e) { console.error('[WA] خطأ في إشعار كشف الحساب:', e.message); }
-}
-
-// ─── إشعار تعديل الشيك ───────────────────────────────────────────────────────
-async function notifyEdited(check) {
-  try {
-    const s = await _getSettings();
-    if (!s.waNotificationsEnabled || !s.waEditEnabled) return;
-    const phone = await _getPartyPhone(check);
-    if (!phone) return;
-    const text =
-`عزيزنا الزبون ${check.partyName}
-
-نود إعلامكم بأنه تم تعديل بيانات الشيك الخاص بكم في معرض الصافي للمفروشات.
-
-رقم الشيك: ${check.checkNumber}
-
-القيمة: ${check.amount?.toLocaleString('ar-EG')} شيكل
-
-تاريخ الاستحقاق: ${_fmt(check.maturityDate)}
-
-للاستفسار يرجى التواصل معنا.`;
-    await _send(phone, text, { partyName: check.partyName, checkNumber: check.checkNumber, checkId: check._id, messageType: 'edited', sentBy: 'system' });
+    await _sendToManager(text, {
+      partyName: invoice.partyName,
+      checkNumber: invoice.invoiceNumber,
+      messageType: 'invoice_new',
+      sentBy: 'system'
+    });
   } catch (e) {
-    console.error('[WA] خطأ في إشعار التعديل:', e.message);
+    console.error('[WA] خطأ في إشعار الفاتورة الجديدة:', e.message);
   }
 }
 
-// ─── التشغيل اليومي: تذكيرات وتقرير ─────────────────────────────────────────
+async function notifyInvoicePaid(invoice) {
+  try {
+    const s = await _getSettings();
+    if (!_isEnabled(s, 'waInvoicePaidEnabled')) return;
+
+    const text =
+`✅ *فاتورة مدفوعة بالكامل — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🏷️ نوع الطرف: ${_partyTypeAr(invoice.partyModel)}
+👤 الطرف: ${invoice.partyName || '-'}
+🔢 رقم الفاتورة: ${invoice.invoiceNumber || '-'}
+💰 المبلغ الإجمالي: ${(invoice.totalAmount || 0).toLocaleString('ar-EG')} ₪
+💳 المدفوع: ${(invoice.paidAmount || 0).toLocaleString('ar-EG')} ₪
+💵 المتبقي: ${((invoice.totalAmount || 0) - (invoice.paidAmount || 0)).toLocaleString('ar-EG')} ₪
+${invoice.discount > 0 ? `💸 الخصم: ${(invoice.discount || 0).toLocaleString('ar-EG')} ₪
+` : ''}📅 التاريخ: ${_fmt(invoice.invoiceDate)}
+
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+    await _sendToManager(text, {
+      partyName: invoice.partyName,
+      checkNumber: invoice.invoiceNumber,
+      messageType: 'invoice_paid',
+      sentBy: 'system'
+    });
+  } catch (e) {
+    console.error('[WA] خطأ في إشعار الفاتورة المدفوعة:', e.message);
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// إشعارات المدفوعات — للمدير فقط
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function notifyPaymentReceived(payment, remainingBalance, previousBalance) {
+  try {
+    const s = await _getSettings();
+    if (!_isEnabled(s, 'waPaymentReceivedEnabled')) return;
+
+    const balanceInfo = (remainingBalance !== undefined && remainingBalance !== null)
+      ? `💵 الرصيد السابق: ${(previousBalance || 0).toLocaleString('ar-EG')} ₪
+💰 الرصيد الجديد: ${remainingBalance.toLocaleString('ar-EG')} ₪
+📊 المتبقي: ${remainingBalance.toLocaleString('ar-EG')} ₪`
+      : '';
+
+    const text =
+`💳 *سند قبض/صرف — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🏷️ نوع الطرف: ${_partyTypeAr(payment.partyModel)}
+👤 الطرف: ${payment.partyName || '-'}
+🔢 رقم السند: ${payment.voucherNumber || '-'}
+📋 نوع السند: ${payment.voucherType === 'receipt' ? 'قبض' : 'صرف'}
+💰 المبلغ: ${(payment.amount || 0).toLocaleString('ar-EG')} ${payment.currency || '₪'}
+💳 طريقة الدفع: ${_methodAr(payment.paymentMethod)}
+${payment.paymentMethod === 'check' ? `🏦 البنك: ${payment.bankName || '-'}
+📝 رقم الشيك: ${payment.chequeNumber || '-'}
+📅 تاريخ الاستحقاق: ${_fmt(payment.chequeDueDate)}
+` : ''}${payment.paymentMethod === 'bank_transfer' ? `🏦 البنك: ${payment.bankName || '-'}
+` : ''}📄 الفاتورة المرتبطة: ${invoiceNumber(payment)}
+📅 التاريخ: ${_fmt(payment.paymentDate)}
+👤 الموظف: ${payment.employeeName || '-'}
+📝 الوصف: ${payment.description || '-'}
+${payment.notes ? `📝 ملاحظات: ${payment.notes}
+` : ''}${balanceInfo}
+
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+    await _sendToManager(text, {
+      partyName: payment.partyName,
+      checkNumber: payment.voucherNumber || '-',
+      messageType: 'payment_received',
+      sentBy: 'system'
+    });
+  } catch (e) {
+    console.error('[WA] خطأ في إشعار الدفعة:', e.message);
+  }
+}
+
+function invoiceNumber(payment) {
+  if (payment.invoiceId) {
+    if (typeof payment.invoiceId === 'object' && payment.invoiceId.invoiceNumber) {
+      return payment.invoiceId.invoiceNumber;
+    }
+    return payment.invoiceId.toString().slice(-6);
+  }
+  return 'غير مرتبط';
+}
+
+async function notifyPaymentsBatch(payments, remainingBalance, previousBalance) {
+  try {
+    if (!payments || payments.length === 0) return;
+    const s = await _getSettings();
+    if (!_isEnabled(s, 'waPaymentReceivedEnabled')) return;
+
+    const totalAmount = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const methodMap = { cash: 'نقداً', check: 'شيك', bank_transfer: 'تحويل بنكي', card: 'بطاقة', other: 'أخرى' };
+
+    const paymentLines = payments.map((p, i) =>
+      `${i + 1}. ${(p.amount || 0).toLocaleString('ar-EG')} ${p.currency || '₪'} — ${methodMap[p.paymentMethod] || p.paymentMethod} (${p.voucherNumber || '-'})`
+    ).join('\n');
+
+    const balanceInfo = (remainingBalance !== undefined && remainingBalance !== null)
+      ? `💵 الرصيد السابق: ${(previousBalance || 0).toLocaleString('ar-EG')} ₪
+💰 الرصيد الجديد: ${remainingBalance.toLocaleString('ar-EG')} ₪`
+      : '';
+
+    const text =
+`💳 *دفعات متعددة (${payments.length}) — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🏷️ نوع الطرف: ${_partyTypeAr(payments[0].partyModel)}
+👤 الطرف: ${payments[0].partyName || '-'}
+
+📋 تفاصيل الدفعات:
+${paymentLines}
+
+💰 الإجمالي: ${totalAmount.toLocaleString('ar-EG')} ${payments[0].currency || '₪'}
+📅 التاريخ: ${_fmt(payments[0].paymentDate)}
+${balanceInfo}
+
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+    await _sendToManager(text, {
+      partyName: payments[0].partyName,
+      checkNumber: payments[0].voucherNumber || '-',
+      messageType: 'payment_batch',
+      sentBy: 'system'
+    });
+  } catch (e) {
+    console.error('[WA] خطأ في إشعار الدفعات المتعددة:', e.message);
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// إشعارات كشف الحساب — للمدير فقط
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function notifyStatementEntry(entry, remainingBalance, previousBalance) {
+  try {
+    const s = await _getSettings();
+    if (!_isEnabled(s, 'waStatementEntryEnabled')) return;
+
+    const typeAr = entry.type === 'debit' ? 'مدين' : 'دائن';
+    const emoji = entry.type === 'debit' ? '📤' : '📥';
+
+    const balanceInfo = (remainingBalance !== undefined && remainingBalance !== null)
+      ? `💵 الرصيد السابق: ${(previousBalance || 0).toLocaleString('ar-EG')} ₪
+💰 الرصيد الجديد: ${remainingBalance.toLocaleString('ar-EG')} ₪`
+      : '';
+
+    const text =
+`${emoji} *حركة كشف حساب — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🏷️ نوع الطرف: ${_partyTypeAr(entry.partyModel)}
+👤 الطرف: ${entry.partyName || '-'}
+📋 البيان: ${entry.description || '-'}
+${emoji} النوع: ${typeAr}
+💰 المبلغ: ${(entry.amount || 0).toLocaleString('ar-EG')} ₪
+🔢 المرجع: ${entry.refNo || '-'}
+💳 طريقة الدفع: ${_methodAr(entry.paymentMethod)}
+📅 التاريخ: ${_fmt(entry.date)}
+${entry.invoiceId ? `📄 الفاتورة المرتبطة: ${typeof entry.invoiceId === 'object' && entry.invoiceId.invoiceNumber ? entry.invoiceId.invoiceNumber : '-'}
+` : ''}${balanceInfo}
+
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+    await _sendToManager(text, {
+      partyName: entry.partyName,
+      checkNumber: entry.refNo || '-',
+      messageType: 'statement_entry',
+      sentBy: 'system'
+    });
+  } catch (e) {
+    console.error('[WA] خطأ في إشعار كشف الحساب:', e.message);
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// إشعارات الشيكات — للمدير فقط
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function notifyAdded(check) {
+  try {
+    const s = await _getSettings();
+    if (!_isEnabled(s, 'waAddedEnabled')) return;
+
+    const text =
+`📝 *شيك جديد — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🏷️ نوع الطرف: ${_partyTypeAr(check.partyModel)}
+👤 الطرف: ${check.partyName || '-'}
+🔢 رقم الشيك: ${check.checkNumber || '-'}
+🏦 البنك: ${check.bankName || '-'}
+💰 القيمة: ${(check.amount || 0).toLocaleString('ar-EG')} ₪
+📅 تاريخ الاستلام: ${_fmt(check.receivedDate)}
+📅 تاريخ الاستحقاق: ${_fmt(check.maturityDate)}
+📋 الحالة: ${_statusAr(check.status)}
+📝 ملاحظات: ${check.notes || 'لا توجد'}
+
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+    await _sendToManager(text, {
+      partyName: check.partyName,
+      checkNumber: check.checkNumber,
+      checkId: check._id,
+      messageType: 'check_added',
+      sentBy: 'system'
+    });
+  } catch (e) {
+    console.error('[WA] خطأ في إشعار الشيك الجديد:', e.message);
+  }
+}
+
+async function notifyCleared(check) {
+  try {
+    const s = await _getSettings();
+    if (!_isEnabled(s, 'waClearedEnabled')) return;
+    if (await _isDuplicate(check._id, 'check_cleared')) {
+      console.log(`[WA] ⚠️ تم إشعار صرف الشيك مسبقاً — ${check.checkNumber}`);
+      return;
+    }
+
+    const wasTransferred = check.status === 'transferred_to_dealer';
+
+    const text =
+`✅ *شيك تم صرفه — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🏷️ نوع الطرف: ${_partyTypeAr(check.partyModel)}
+👤 الطرف الأصلي: ${check.partyName || '-'}
+🔢 رقم الشيك: ${check.checkNumber || '-'}
+🏦 البنك: ${check.bankName || '-'}
+💰 القيمة: ${(check.amount || 0).toLocaleString('ar-EG')} ₪
+📅 تاريخ الصرف: ${_fmt(check.clearDate || new Date())}
+📅 تاريخ الاستحقاق: ${_fmt(check.maturityDate)}
+${wasTransferred ? `🔄 كان محوّلاً لتاجر: ${check.transferredToDealerName || '-'}
+` : ''}━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+    await _sendToManager(text, {
+      partyName: check.partyName,
+      checkNumber: check.checkNumber,
+      checkId: check._id,
+      messageType: 'check_cleared',
+      sentBy: 'system'
+    });
+  } catch (e) {
+    console.error('[WA] خطأ في إشعار صرف الشيك:', e.message);
+  }
+}
+
+async function notifyReturned(check) {
+  try {
+    const s = await _getSettings();
+    if (!_isEnabled(s, 'waReturnedEnabled')) return;
+    if (await _isDuplicate(check._id, 'check_returned')) {
+      console.log(`[WA] ⚠️ تم إشعار رجوع الشيك مسبقاً — ${check.checkNumber}`);
+      return;
+    }
+
+    const text =
+`↩️ *شيك مرتجع — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🏷️ نوع الطرف: ${_partyTypeAr(check.partyModel)}
+👤 الطرف: ${check.partyName || '-'}
+🔢 رقم الشيك: ${check.checkNumber || '-'}
+🏦 البنك: ${check.bankName || '-'}
+💰 القيمة: ${(check.amount || 0).toLocaleString('ar-EG')} ₪
+📅 تاريخ الاستحقاق: ${_fmt(check.maturityDate)}
+⚠️ تم تسجيل رجوع الشيك — يُضاف المبلغ مدين على الحساب
+
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+    await _sendToManager(text, {
+      partyName: check.partyName,
+      checkNumber: check.checkNumber,
+      checkId: check._id,
+      messageType: 'check_returned',
+      sentBy: 'system'
+    });
+  } catch (e) {
+    console.error('[WA] خطأ في إشعار رجوع الشيك:', e.message);
+  }
+}
+
+async function notifyCancelled(check) {
+  try {
+    const s = await _getSettings();
+    if (!_isEnabled(s, 'waCancelledEnabled')) return;
+
+    const text =
+`🚫 *شيك ملغي — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🏷️ نوع الطرف: ${_partyTypeAr(check.partyModel)}
+👤 الطرف: ${check.partyName || '-'}
+🔢 رقم الشيك: ${check.checkNumber || '-'}
+🏦 البنك: ${check.bankName || '-'}
+💰 القيمة: ${(check.amount || 0).toLocaleString('ar-EG')} ₪
+📅 تاريخ الاستحقاق: ${_fmt(check.maturityDate)}
+⚠️ تم حذف الشيك نهائياً من النظام
+
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+    await _sendToManager(text, {
+      partyName: check.partyName,
+      checkNumber: check.checkNumber,
+      checkId: check._id,
+      messageType: 'check_cancelled',
+      sentBy: 'system'
+    });
+  } catch (e) {
+    console.error('[WA] خطأ في إشعار إلغاء الشيك:', e.message);
+  }
+}
+
+async function notifyEdited(check) {
+  try {
+    const s = await _getSettings();
+    if (!_isEnabled(s, 'waEditEnabled')) return;
+
+    const text =
+`✏️ *شيك تعديل — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🏷️ نوع الطرف: ${_partyTypeAr(check.partyModel)}
+👤 الطرف: ${check.partyName || '-'}
+🔢 رقم الشيك: ${check.checkNumber || '-'}
+🏦 البنك: ${check.bankName || '-'}
+💰 القيمة: ${(check.amount || 0).toLocaleString('ar-EG')} ₪
+📅 تاريخ الاستحقاق: ${_fmt(check.maturityDate)}
+📋 الحالة: ${_statusAr(check.status)}
+
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+    await _sendToManager(text, {
+      partyName: check.partyName,
+      checkNumber: check.checkNumber,
+      checkId: check._id,
+      messageType: 'check_edited',
+      sentBy: 'system'
+    });
+  } catch (e) {
+    console.error('[WA] خطأ في إشعار تعديل الشيك:', e.message);
+  }
+}
+
+async function notifyTransferred(check, dealerName) {
+  try {
+    const s = await _getSettings();
+    if (!_isEnabled(s, 'waAddedEnabled')) return;
+
+    const text =
+`🔄 *شيك محوّل لتاجر — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+👤 الزبون الأصلي: ${check.partyName || '-'}
+🔢 رقم الشيك: ${check.checkNumber || '-'}
+🏦 البنك: ${check.bankName || '-'}
+💰 القيمة: ${(check.amount || 0).toLocaleString('ar-EG')} ₪
+📅 تاريخ الاستحقاق: ${_fmt(check.maturityDate)}
+🏪 التاجر المستفيد: ${dealerName || '-'}
+📋 تم تسجيل سند صرف بالتاجر
+
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+    await _sendToManager(text, {
+      partyName: check.partyName,
+      checkNumber: check.checkNumber,
+      checkId: check._id,
+      messageType: 'check_transferred',
+      sentBy: 'system'
+    });
+  } catch (e) {
+    console.error('[WA] خطأ في إشعار تحويل الشيك:', e.message);
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// التذكيرات اليومية — للمدير فقط
+// ══════════════════════════════════════════════════════════════════════════════
+
 async function runDailyJob() {
   const history = new CronHistory({ startTime: new Date() });
   let sent = 0, failed = 0;
@@ -398,157 +570,156 @@ async function runDailyJob() {
     ];
 
     let scannedTotal = 0;
+    const managerPhone = s.waManagerPhone;
+    const remindersSent = [];
 
-    if (s.waReminderEnabled) {
+    if (s.waReminderEnabled && managerPhone) {
       for (const stage of REMINDER_STAGES) {
         const targetDate = new Date(now.getTime() + stage.days * 24 * 60 * 60 * 1000);
         const startOfDay = new Date(targetDate); startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay   = new Date(targetDate); endOfDay.setHours(23, 59, 59, 999);
+        const endOfDay = new Date(targetDate); endOfDay.setHours(23, 59, 59, 999);
 
-        // الواتساب للزبائن فقط — شيكات التجار مستبعدة من التذكيرات والتقرير من الأساس
         const stageChecks = await Check.find({
           status: 'pending',
-          partyModel: 'Customer',
           maturityDate: { $gte: startOfDay, $lte: endOfDay }
         }).lean();
         scannedTotal += stageChecks.length;
 
         for (const check of stageChecks) {
-          // لا ترسل نفس مرحلة التذكير مرتين لنفس الشيك
           const existing = await NotificationLog.findOne({
             checkId: check._id, messageType: stage.messageType, status: 'SUCCESS'
           }).lean();
           if (existing) continue;
 
-          const phone = await _getPartyPhone(check);
-          if (!phone) continue;
-
-          const dueLine = stage.days === 0
-            ? 'اليوم هو موعد استحقاق الشيك الخاص بكم.'
-            : `نود تذكيركم بأن موعد استحقاق الشيك الخاص بكم سيكون ${stage.label} بتاريخ:`;
-
-          const text =
-`عزيزنا الزبون ${check.partyName}
-
-${dueLine}
-
-رقم الشيك: ${check.checkNumber}
-
-تاريخ الاستحقاق: ${_fmt(check.maturityDate)}
-
-القيمة المطلوبة: ${check.amount?.toLocaleString('ar-EG')} شيكل.
-
-شكراً لتعاونكم.`;
-
-          const ok = await _send(phone, text, {
-            partyName: check.partyName, checkNumber: check.checkNumber,
-            checkId: check._id, messageType: stage.messageType, sentBy: 'cron'
+          remindersSent.push({
+            checkNumber: check.checkNumber,
+            partyName: check.partyName,
+            amount: check.amount,
+            maturityDate: check.maturityDate,
+            label: stage.label
           });
-          if (ok) sent++; else failed++;
         }
       }
     }
 
     history.checksScanned = scannedTotal;
 
-    // الشيكات المستحقة خلال نافذة التقرير (تُستخدم فقط لملخص المدير أدناه)
-    const reminderDays = s.waReminderDays || 7;
-    const reportWindowEnd = new Date(now.getTime() + reminderDays * 24 * 60 * 60 * 1000);
-    const checks = await Check.find({
-      status: 'pending',
-      partyModel: 'Customer',
-      maturityDate: { $gte: now, $lte: reportWindowEnd }
-    }).lean();
+    // إرسال ملخص التذكيرات للمدير
+    if (remindersSent.length > 0 && managerPhone) {
+      const reminderLines = remindersSent.map((r, i) =>
+        `${i + 1}. شيك #${r.checkNumber} — ${r.partyName} — ${(r.amount || 0).toLocaleString('ar-EG')} ₪ — ${r.label}`
+      ).join('\n');
+
+      const text =
+`⏰ *تذكيرات شيكات المستحقة — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 التاريخ: ${_fmt(new Date())}
+🔢 عدد الشيكات المستحقة: ${remindersSent.length}
+
+📋 التفاصيل:
+${reminderLines}
+
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+      const ok = await _sendToManager(text, {
+        partyName: 'المدير',
+        checkNumber: '-',
+        messageType: 'daily_reminders',
+        sentBy: 'cron'
+      });
+      if (ok) sent++; else failed++;
+    }
 
     // ─── التقرير اليومي للمدير ───────────────────────────────────────────────
-    const managerPhone = s.waManagerPhone;
     if (managerPhone) {
-      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const reminderDays = s.waReminderDays || 7;
+      const reportWindowEnd = new Date(now.getTime() + reminderDays * 24 * 60 * 60 * 1000);
+      const checks = await Check.find({
+        status: 'pending',
+        maturityDate: { $gte: now, $lte: reportWindowEnd }
+      }).lean();
+
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
       const [clearedToday, returnedToday, failedLogs] = await Promise.all([
-        NotificationLog.countDocuments({ messageType: 'cleared', status: 'SUCCESS', sentAt: { $gte: todayStart } }),
-        NotificationLog.countDocuments({ messageType: 'returned', status: 'SUCCESS', sentAt: { $gte: todayStart } }),
+        NotificationLog.countDocuments({ messageType: 'check_cleared', status: 'SUCCESS', sentAt: { $gte: todayStart } }),
+        NotificationLog.countDocuments({ messageType: 'check_returned', status: 'SUCCESS', sentAt: { $gte: todayStart } }),
         NotificationLog.countDocuments({ status: 'FAILED', sentAt: { $gte: todayStart } }),
       ]);
       const totalAmount = checks.reduce((sum, c) => sum + (c.amount || 0), 0);
 
       const report =
-`📋 التقرير اليومي — معرض الصافي للمفروشات
+`📋 *التقرير اليومي — معرض الصافي للمفروشات*
+━━━━━━━━━━━━━━━━━━━━━━━
 
 📅 التاريخ: ${_fmt(new Date())}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━
-🔔 الشيكات المستحقة خلال ${reminderDays} أيام: ${checks.length}
+🔔 شيكات مستحقة خلال ${reminderDays} أيام: ${checks.length}
+💰 إجمالي قيمتها: ${totalAmount.toLocaleString('ar-EG')} ₪
 💬 التذكيرات المرسلة: ${sent}
-✅ الشيكات المصروفة (اليوم): ${clearedToday}
-↩️ الشيكات المرتجعة (اليوم): ${returnedToday}
-❌ الرسائل الفاشلة (اليوم): ${failedLogs}
-💰 إجمالي قيمة الشيكات المستحقة: ${totalAmount.toLocaleString('ar-EG')} ₪
-━━━━━━━━━━━━━━━━━━━━━━━━━`;
+✅ شيكات صرفت اليوم: ${clearedToday}
+↩️ شيكات مرتجعة اليوم: ${returnedToday}
+❌ رسائل فاشلة اليوم: ${failedLogs}
 
-      const ok = await _send(managerPhone, report, {
-        partyName: 'المدير', checkNumber: '-',
-        messageType: 'daily_report', sentBy: 'cron'
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+      const ok = await _sendToManager(report, {
+        partyName: 'المدير',
+        checkNumber: '-',
+        messageType: 'daily_report',
+        sentBy: 'cron'
       });
       if (!ok) failed++;
     }
 
-    history.messagesSent   = sent;
+    history.messagesSent = sent;
     history.messagesFailed = failed;
-    history.endTime        = new Date();
+    history.endTime = new Date();
     await history.save();
     console.log(`[WA-Cron] ✅ انتهى: ${sent} رسالة ناجحة، ${failed} فاشلة`);
   } catch (err) {
-    history.lastError  = err.message;
-    history.endTime    = new Date();
-    history.messagesSent   = sent;
+    history.lastError = err.message;
+    history.endTime = new Date();
+    history.messagesSent = sent;
     history.messagesFailed = failed;
     await history.save().catch(() => {});
     console.error('[WA-Cron] ❌ خطأ:', err.message);
   }
 }
 
-// ─── إرسال جماعي (تدقيق) ─────────────────────────────────────────────────────
-async function sendBulkAudit() {
-  const s = await _getSettings();
-  // الواتساب للزبائن فقط — شيكات التجار مستبعدة من الإرسال الجماعي
-  const checks = await Check.find({ status: 'pending', partyModel: 'Customer' }).lean();
-  let sent = 0, failed = 0;
-  for (const check of checks) {
-    const phone = await _getPartyPhone(check);
-    if (!phone) continue;
-    const text =
-`عزيزنا الزبون ${check.partyName}
 
-هذا تأكيد من معرض الصافي للمفروشات بوجود شيك مسجل باسمكم.
+// ══════════════════════════════════════════════════════════════════════════════
+// رسالة اختبار — للمدير
+// ══════════════════════════════════════════════════════════════════════════════
 
-رقم الشيك: ${check.checkNumber}
-القيمة: ${check.amount?.toLocaleString('ar-EG')} شيكل
-تاريخ الاستحقاق: ${_fmt(check.maturityDate)}
-
-للاستفسار يرجى التواصل معنا.`;
-    const ok = await _send(phone, text, {
-      partyName: check.partyName, checkNumber: check.checkNumber,
-      checkId: check._id, messageType: 'bulk', sentBy: 'admin'
-    });
-    if (ok) sent++; else failed++;
-  }
-  return { sent, failed, total: checks.length };
-}
-
-// ─── رسالة اختبار للمدير ──────────────────────────────────────────────────────
 async function sendTestMessage() {
-  const s = await _getSettings();
-  const managerPhone = s.waManagerPhone;
-  if (!managerPhone) throw new Error('لم يتم إدخال رقم المدير في الإعدادات');
-  const text = `🚨 نظام إشعارات الشيكات يعمل بنجاح.\n\nوقت الإرسال:\n${moment().locale('ar').format('DD/MM/YYYY HH:mm:ss')}`;
-  await WA.sendMessage(managerPhone, text);
+  const phone = await _getManagerPhone();
+  if (!phone) throw new Error('لم يتم إدخال رقم المدير في الإعدادات');
+  const text =
+`🚨 *اختبار نظام إشعارات المدير*
+
+النظام يعمل بنجاح ✅
+
+وقت الاختبار: ${_fmtDateTime(new Date())}
+
+━━━━━━━━━━━━━━━━━━━━━━━
+جميع إشعارات النظام (الفواتير، المدفوعات، الشيكات، كشف الحساب)
+ستصلك على هذا الرقم حصراً.`;
+
+  await WA.sendMessage(phone, text);
   await new NotificationLog({
-    partyName: 'المدير', partyPhone: managerPhone, checkNumber: '-',
+    partyName: 'المدير', partyPhone: phone, checkNumber: '-',
     messageType: 'test', messageText: text, status: 'SUCCESS', sentBy: 'admin'
   }).save();
 }
 
-// ─── إعداد Cron Job ───────────────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// إعداد Cron Job
+// ══════════════════════════════════════════════════════════════════════════════
+
 async function setupCron() {
   if (_cronJob) { _cronJob.stop(); _cronJob = null; }
   const s = await _getSettings();
@@ -559,14 +730,64 @@ async function setupCron() {
   _cronJob = cron.schedule(expression, () => runDailyJob(), { timezone: 'Asia/Jerusalem' });
 }
 
-/** إعادة إعداد Cron (تُستدعى بعد تغيير الإعدادات) */
 async function refreshCron() {
   await setupCron();
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// إرسال جماعي — ملخص للمدير فقط
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function sendBulkAudit() {
+  const s = await _getSettings();
+  if (!s.waManagerPhone) throw new Error('لم يتم إدخال رقم المدير في الإعدادات');
+
+  const pendingChecks = await Check.find({ status: 'pending' }).lean();
+  if (pendingChecks.length === 0) {
+    return { sent: 0, failed: 0, total: 0 };
+  }
+
+  const lines = pendingChecks.map((c, i) =>
+    `${i + 1}. شيك #${c.checkNumber} — ${c.partyName} (${_partyTypeAr(c.partyModel)}) — ${(c.amount || 0).toLocaleString('ar-EG')} ₪ — استحقاق: ${_fmt(c.maturityDate)}`
+  ).join('\n');
+
+  const totalAmount = pendingChecks.reduce((sum, c) => sum + (c.amount || 0), 0);
+
+  const text =
+`📋 *ملخص الشيكات المعلقة — معرض الصافي*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 التاريخ: ${_fmt(new Date())}
+🔢 العدد: ${pendingChecks.length} شيك
+💰 الإجمالي: ${totalAmount.toLocaleString('ar-EG')} ₪
+
+📋 التفاصيل:
+${lines}
+
+━━━━━━━━━━━━━━━━━━━━━━━
+⏰ ${_fmtDateTime(new Date())}`;
+
+  const ok = await _sendToManager(text, {
+    partyName: 'المدير',
+    checkNumber: '-',
+    messageType: 'daily_report',
+    sentBy: 'admin'
+  });
+
+  return { sent: ok ? 1 : 0, failed: ok ? 0 : 1, total: pendingChecks.length };
+}
+
+
 module.exports = {
-  notifyAdded, notifyCleared, notifyReturned, notifyCancelled, notifyEdited,
-  notifyInvoiceNew, notifyInvoicePaid, notifyPaymentReceived, notifyPaymentsBatch,
+  // إشعارات الفواتير
+  notifyInvoiceNew, notifyInvoicePaid,
+  // إشعارات المدفوعات
+  notifyPaymentReceived, notifyPaymentsBatch,
+  // إشعارات كشف الحساب
   notifyStatementEntry,
-  sendBulkAudit, sendTestMessage, setupCron, refreshCron, runDailyJob
+  // إشعارات الشيكات
+  notifyAdded, notifyCleared, notifyReturned, notifyCancelled, notifyEdited, notifyTransferred,
+  // أدوات عامة
+  sendTestMessage, setupCron, refreshCron, runDailyJob, sendBulkAudit
 };
