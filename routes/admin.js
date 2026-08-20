@@ -1246,31 +1246,30 @@ router.post('/payments/add', isAdmin, async (req, res) => {
     // =============================================
     // ===== تحديث رصيد الطرف =====
     // =============================================
-    let newBalance = party.balance || 0;
+    const previousBalance = party.balance || 0;
+    let newBalance = previousBalance;
 
     if (type === 'customer') {
       // الزبون: قبض = ينقص، صرف = يزيد
       if (voucherType === 'receipt') {
-        newBalance = party.balance - pAmount;
+        newBalance = previousBalance - pAmount;
       } else if (voucherType === 'payment') {
-        newBalance = party.balance + pAmount;
+        newBalance = previousBalance + pAmount;
       }
     } else if (type === 'dealer') {
       // التاجر: قبض = يزيد، صرف = ينقص
       if (voucherType === 'receipt') {
-        newBalance = party.balance + pAmount;
+        newBalance = previousBalance + pAmount;
       } else if (voucherType === 'payment') {
-        newBalance = party.balance - pAmount;
+        newBalance = previousBalance - pAmount;
       }
     }
 
     party.balance = newBalance;
     await party.save();
 
-    // إشعار الواتساب بعد تحديث الرصيد (نمرر المتبقي)
-    if (voucherType === 'receipt' && type === 'customer') {
-      CNS.notifyPaymentReceived(pay, newBalance).catch(e => console.error('[WA]', e.message));
-    }
+    // إشعار الواتساب للمدير بعد تحديث الرصيد
+    CNS.notifyPaymentReceived(pay, newBalance, previousBalance).catch(e => console.error('[WA]', e.message));
     // =============================================
 
     // 4) إعادة حساب الفاتورة المرتبطة
@@ -1411,18 +1410,19 @@ router.post('/payments/add-multi', isAdmin, async (req, res) => {
     }
 
     // تحديث رصيد الطرف مرة واحدة بإجمالي كل الدفعات
-    let newBalance = party.balance || 0;
+    const previousBalance = party.balance || 0;
+    let newBalance = previousBalance;
     if (type === 'customer') {
-      newBalance = voucherType === 'receipt' ? (party.balance - totalAmount) : (party.balance + totalAmount);
+      newBalance = voucherType === 'receipt' ? (previousBalance - totalAmount) : (previousBalance + totalAmount);
     } else if (type === 'dealer') {
-      newBalance = voucherType === 'receipt' ? (party.balance + totalAmount) : (party.balance - totalAmount);
+      newBalance = voucherType === 'receipt' ? (previousBalance + totalAmount) : (previousBalance - totalAmount);
     }
     party.balance = newBalance;
     await party.save();
 
     // إشعار واحد يجمع كل الدفعات بعد تحديث الرصيد
     if (batchPayments.length > 0) {
-      CNS.notifyPaymentsBatch(batchPayments, newBalance).catch(e => console.error('[WA]', e.message));
+      CNS.notifyPaymentsBatch(batchPayments, newBalance, previousBalance).catch(e => console.error('[WA]', e.message));
     }
 
     await recalcInvoicePaid(invId);
@@ -1770,6 +1770,9 @@ router.post('/checks/transfer/:id', isAdmin, async (req, res) => {
     check.transferLedgerId = ledgerEntry._id;
     await check.save();
 
+    // إشعار المدير بتحويل الشيك
+    CNS.notifyTransferred(check, dealer.fullName).catch(e => console.error('[WA]', e.message));
+
     req.flash('success_msg', `تم تحويل الشيك رقم ${check.checkNumber} إلى ${dealer.fullName} بسند صرف ${vNum} دون إنشاء شيك جديد`);
     res.redirect('/admin/checks');
   } catch (err) {
@@ -1937,14 +1940,15 @@ router.post('/statement/add', isAdmin, async (req, res) => {
 
     await entry.save();
 
-    // حساب الرصيد المتبقي للزبون بعد الحركة لإرفاقه في الإشعار
+    // حساب الرصيد السابق والمتبقي للزبون لإرفاقه في الإشعار
+    const statementPreviousBalance = (type === 'customer' && typeof party.balance === 'number') ? party.balance : null;
     let statementRemaining = null;
     if (type === 'customer' && typeof party.balance === 'number') {
       statementRemaining = transactionType === 'debit'
         ? party.balance + parsedAmount
         : party.balance - parsedAmount;
     }
-    CNS.notifyStatementEntry(entry, statementRemaining).catch(e => console.error('[WA]', e.message));
+    CNS.notifyStatementEntry(entry, statementRemaining, statementPreviousBalance).catch(e => console.error('[WA]', e.message));
 
     if (transactionType === 'credit') {
       if (paymentMethod === 'cash' || paymentMethod === 'bank_transfer') {
