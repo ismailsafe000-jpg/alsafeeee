@@ -151,6 +151,8 @@ const schema = new mongoose.Schema({
   waInvoicePaidEnabled:    { type: Boolean, default: true  },
   waPaymentReceivedEnabled:{ type: Boolean, default: true  },
   waStatementEntryEnabled: { type: Boolean, default: true  },
+  waBotEnabled:              { type: Boolean, default: true  },
+  waManagerJid:              { type: String,  default: ''    },
   // عام
   waManagerPhone:          { type: String,  default: ''    },
   waAccountantPhone:       { type: String,  default: ''    },
