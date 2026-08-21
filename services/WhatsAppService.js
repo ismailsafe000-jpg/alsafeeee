@@ -66,11 +66,12 @@ function _enqueue(fn) {
 // ─── ⑤ حذف القفل اليتيم عند الـ startup ─────────────────────────────────────
 async function _clearStaleLockOnStartup() {
   try {
+    // حذف أي قفل موجود (سواء منهي أو لا) — Instance جديد يأخذ الأولوية دائماً
     const now  = new Date();
     const lock = await WaLock.findById('wa-lock');
-    if (lock && lock.instanceId !== INSTANCE_ID && lock.expiresAt < now) {
+    if (lock && lock.instanceId !== INSTANCE_ID) {
       await WaLock.deleteOne({ _id: 'wa-lock' });
-      console.log('[WhatsApp] 🗑️ حُذف قفل يتيم من instance قديم');
+      console.log('[WhatsApp] 🗑️ حُذف قفل قديم من instance آخر —_instance جديد يأخذ الأولوية');
     }
   } catch (_) {}
 }
@@ -166,6 +167,8 @@ function _stopSessionCleanup() { if (_cleanupTimer) { clearInterval(_cleanupTime
 // ─── تنسيق رقم الهاتف ────────────────────────────────────────────────────────
 function _formatPhone(phone) {
   if (!phone) return null;
+  // إذا كان الرقم يحتوي على @ (مثل JID) أرجعه كما هو
+  if (phone.includes('@')) return phone;
   let p = phone.replace(/[\s\-().+]/g, '');
   if (p.startsWith('00')) p = p.slice(2);
   if (p.startsWith('0'))  p = '970' + p.slice(1);
