@@ -247,6 +247,16 @@
         <i class="fa-solid fa-shield-halved"></i>
         <span>جميع إشعارات النظام (الفواتير، المدفوعات، الشيكات، كشف الحساب، التذكيرات، التقارير) تذهب إلى هذا الرقم <strong>حصراً</strong>. لا يُرسل أي إشعار للزبائن أو التجار.</span>
       </div>
+      <div class="switch-row">
+        <div class="switch-info">
+          <div class="sw-title">🤖 تفعيل بوت التحكم من واتساب</div>
+          <div class="sw-desc">يُمكّنك من إدارة النظام بالكامل من واتسابك — اكتب "مساعدة" لعرض الأوامر</div>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" name="waBotEnabled"
+                 <%= settings.waBotEnabled ? 'checked' : '' %>>
+        </div>
+      </div>
       <div class="row g-3">
         <div class="col-md-6">
           <label class="form-label">رقم واتساب المدير</label>
@@ -295,6 +305,36 @@
       <i class="fa-solid fa-floppy-disk"></i> حفظ إعدادات الواتساب
     </button>
   </form>
+
+  <!-- ═══ Bot Instructions ═══ -->
+  <div class="wa-section mt-4">
+    <h5><i class="fa-solid fa-robot" style="color:#8b5cf6;"></i> بوت التحكم من واتساب</h5>
+    <div style="background:#faf5ff; border:1px solid #c4b5fd; border-radius:10px; padding:16px; margin-bottom:14px; font-size:12.5px; color:#5b21b6;">
+      <p style="margin:0 0 10px;"><strong>🤖 كيف يعمل البوت؟</strong></p>
+      <p style="margin:0 0 8px;">أرسل أي أمر من رقم المدير المُحدَّد أعلاه وسيرة البوت يرد عليك فوراً.</p>
+      <p style="margin:0 0 12px;">اكتب <code>مساعدة</code> في واتساب لعرض جميع الأوامر المتاحة.</p>
+      <table style="width:100%; border-collapse:collapse; font-size:12px;">
+        <thead><tr style="border-bottom:2px solid #c4b5fd;">
+          <th style="padding:6px 8px; text-align:right;">الأمر</th>
+          <th style="padding:6px 8px; text-align:right;">الوصف</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #e9d5ff;"><td style="padding:5px 8px;"><code>رصيد</code></td><td style="padding:5px 8px;">عرض أرصدة جميع الزبائن</td></tr>
+          <tr style="border-bottom:1px solid #e9d5ff;"><td style="padding:5px 8px;"><code>رصيد [اسم]</code></td><td style="padding:5px 8px;">عرض رصيد طرف محدد + آخر الحركات</td></tr>
+          <tr style="border-bottom:1px solid #e9d5ff;"><td style="padding:5px 8px;"><code>كشف [اسم]</code></td><td style="padding:5px 8px;">كشف حساب تفصيلي</td></tr>
+          <tr style="border-bottom:1px solid #e9d5ff;"><td style="padding:5px 8px;"><code>فواتير</code></td><td style="padding:5px 8px;">الفواتير المعلقة</td></tr>
+          <tr style="border-bottom:1px solid #e9d5ff;"><td style="padding:5px 8px;"><code>شيكات</code></td><td style="padding:5px 8px;">الشيكات المستحقة</td></tr>
+          <tr style="border-bottom:1px solid #e9d5ff;"><td style="padding:5px 8px;"><code>دفعات [اسم]</code></td><td style="padding:5px 8px;">آخر الدفعات لطرف</td></tr>
+          <tr style="border-bottom:1px solid #e9d5ff;"><td style="padding:5px 8px;"><code>زبائن</code> / <code>تجار</code></td><td style="padding:5px 8px;">قائمة الزبائن أو التجار</td></tr>
+          <tr style="border-bottom:1px solid #e9d5ff;"><td style="padding:5px 8px;"><code>تقرير</code></td><td style="padding:5px 8px;">تقرير شامل</td></tr>
+          <tr style="border-bottom:1px solid #e9d5ff;"><td style="padding:5px 8px;"><code>دفعة [اسم] [مبلغ] [نقد]</code></td><td style="padding:5px 8px;">تسجيل دفعة (نقد/شيك/تحويل/بطاقة)</td></tr>
+          <tr style="border-bottom:1px solid #e9d5ff;"><td style="padding:5px 8px;"><code>فاتورة [اسم] [مبلغ]</code></td><td style="padding:5px 8px;">إنشاء فاتورة جديدة</td></tr>
+          <tr style="border-bottom:1px solid #e9d5ff;"><td style="padding:5px 8px;"><code>حركة [اسم] [مبلغ] [مدين] [وصف]</code></td><td style="padding:5px 8px;">إضافة حركة يدوية</td></tr>
+          <tr><td style="padding:5px 8px;"><code>تذكير</code></td><td style="padding:5px 8px;">تشغيل التذكيرات الآن</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
   <!-- ═══ Bulk Actions ═══ -->
   <div class="wa-section mt-4">
